@@ -1,0 +1,5 @@
+{
+	"passphrase" : "Put your passphrase here",
+	"api_secret" : "See coinbase's documentation to generate the key",
+        "key" :	""
+}

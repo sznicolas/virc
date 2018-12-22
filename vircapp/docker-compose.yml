@@ -1,0 +1,111 @@
+version: '3'
+
+
+services:
+    mongo:
+        image: mongo
+        restart: always
+        volumes:
+            - ../mongodata:/data/db
+        networks:
+            - public-net
+
+    redis:
+        image: redis:5.0-rc-alpine
+        command: redis-server --appendonly yes
+        restart: always
+        volumes:
+            - ../redisdata/:/data
+        ports:
+            - "6379:6379"
+        networks:
+            - public-net
+            - private-net
+
+    grabber:
+        build: 
+          context: .
+          dockerfile: Dockerfile.grabber
+        restart: always
+        depends_on:
+            - redis
+            - mongo
+        networks:
+            - public-net
+        env_file:
+            - conf.env
+
+    analyst:
+        build: 
+          context: .
+          dockerfile: Dockerfile.analyst
+        restart: always
+        depends_on:
+            - grabber
+        env_file:
+            - conf.env
+        networks:
+            - public-net
+
+    gui:
+        build: 
+          context: .
+          dockerfile: Dockerfile.gui
+        restart: on-failure
+        env_file:
+            - conf.env
+        depends_on:
+            - analyst
+        networks:
+            - private-net
+        ports:
+            - "5000:5000"
+
+    trader:
+        build: 
+          context: .
+          dockerfile: Dockerfile.trader
+        restart: on-failure
+        env_file:
+            - conf.env
+        networks:
+            - private-net
+        volumes:
+            - ../logs:/logs
+        depends_on:
+            - redis
+            - analyst
+
+    cambistasim:
+        build: 
+          context: .
+          dockerfile: Dockerfile.cambistasim
+        restart: on-failure
+        env_file:
+            - conf.env
+        networks:
+            - private-net
+        volumes:
+            - ../logs:/logs
+        depends_on:
+            - gui
+
+    cambista:
+        build: 
+          context: .
+          dockerfile: Dockerfile.cambista
+        restart: on-failure
+        env_file:
+            - conf.env
+        networks:
+            - private-net
+        volumes:
+            - ../logs:/logs
+        depends_on:
+            - gui
+
+networks:
+        private-net:
+                driver: bridge
+        public-net:
+                driver: bridge

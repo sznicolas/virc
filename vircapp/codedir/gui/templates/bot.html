@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block content %}
+{% if bot %}
+<div class="container">
+	{% if bot['sim_mode'] %}
+		<h1 class="bot-sim">
+	{% else %}
+		<div class="bot-prod">
+	{% endif %}
+	Bot {{ bot['name'] }}</h1>
+	<div class="row">
+		<div class="col-md-2 thick">Started at:</div><div class="col-md-2">{{ bot['start_date'][:-7] }}</div>
+	</div>
+	<div class="row">
+		<div class="col-md-1 thick">Type</div><div class="col-md-1">{{ bot['type'] }}</div>
+		<div class="col-md-1 thick">Loop</div><div class="col-md-1">{{ bot['instructions_loop'] }}</div>
+		<div class="col-md-1 thick">Mode</div><div class="col-md-1">{{ "Simulation" if bot['sim_mode'] else "Prod" }}</div>
+	</div>
+	<div class="row">
+		<div class="col-md-1 thick">PID</div><div class="col-md-1">{{ bot['pid'] }}</div>
+		<div class="col-md-1 thick">UID</div><div class="col-md-2">{{ bot['uid'][:8] }}</div>
+	</div>
+	{% with instructions = bot['instructions'] , title = "Instructions" %}
+	{% include 'includes/bot_instructions.html' %}
+	{% endwith %}
+	{% with instructions = instructions_history, title = "History" %}
+	{% include 'includes/bot_instructions.html' %}
+	{% endwith %}
+</div>
+{% endif %}
+{% endblock content %}

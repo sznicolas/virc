@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+	<div class="row">
+		<div class="col-md-8">
+			<a href="{{ url_for('bots_stopall') }}" class="btn btn-danger confirmation" role="button">Stop all bots</a>
+			<a href="{{ url_for('bots_new_simple') }}" class="btn btn-success" role="buton" >New Simple Bot</a>
+		</div><div class="col-md-4"></div>
+	</div>
+    {% if newbots %}
+	    <h1>New bots</h1>
+		<div class="row">
+			<div class="col-md-8">
+				<table class="table table-striped container">
+				{% for bot in newbots %}
+					<tr><th scope="row">{{ bot['name'] }}</th><td>{{ bot['type'] }}</td></tr>
+				{% endfor %}
+				</table>
+			</div>
+		</div>
+	{% endif %}
+    {% if bots %}
+	    <h1>Bots</h1>
+		<div class="row">
+			<div class="col-md-8">
+				<table class="table table-striped container">
+						<tr><th>Name</th><th>Type</th><th>Loop?</th><th>Instr. Count</th><th>Actions</th></tr>
+				{% for bot in bots %}
+					<tr>
+							<th scope="row">
+									<span class="glyphicon {{ 'glyphicon-wrench' if bot['sim_mode'] else 'glyphicon-briefcase' }}" data-toggle="tooltip" title="{{ 'Simulation mode' if bot['sim_mode'] else 'Prod/Real mode' }}"></span>
+									<a href="/bot/{{ bot['uid'] }}">{{ "{} ({}...)".format(bot['name'], bot['uid'][:8]) }}</a>
+							</th>
+						<td>{{ bot['type'] }}</td>
+						<td>
+							<span class="glyphicon {{ 'glyphicon-repeat' if bot['instructions_loop'] else 'glyphicon-list-alt' }}" data-toggle="tooltip" title="{{ 'Loop' if bot['instructions_loop'] else 'One shot' }}"></span>
+						</td>
+						<td>{{ bot['instructions_count'] }}</td>
+							<td><a href="{{ url_for("bot_stop", uid=bot['uid']) }}" role="button" class="btn btn-danger btn-sm confirmation">
+          						<span class="glyphicon glyphicon-remove"></span>Stop
+        						</a>
+							</td>
+					</tr>
+				{% endfor %}
+				</table>
+			</div>
+		</div>
+	{% endif %}
+</div>
+{% endblock content %}

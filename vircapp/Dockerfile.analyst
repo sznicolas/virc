@@ -1,0 +1,14 @@
+FROM ubuntu:latest
+
+RUN apt-get update && \
+	echo $TZ > /etc/timezone     && \
+	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-websocket python-pip tzdata vim && \
+        apt-get clean all && \
+	pip install --no-cache-dir redis hiredis python-dateutil pymongo
+
+COPY codedir/analyst /code/
+COPY codedir/common /code/
+
+WORKDIR /code/
+
+CMD ["python","-u","/code/mkstats.py"]

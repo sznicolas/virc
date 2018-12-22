@@ -1,0 +1,14 @@
+FROM ubuntu:latest
+
+RUN apt-get update && \
+	echo $TZ > /etc/timezone     && \
+	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-websocket python-pip tzdata && \
+        apt-get clean all && \
+	pip install --no-cache-dir cbpro redis hiredis python-dateutil pymongo
+
+COPY codedir/grabber /code/
+COPY codedir/common /code/
+
+WORKDIR /code/
+
+CMD ["python","-u","/code/get_data.py"]

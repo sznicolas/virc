@@ -1,0 +1,14 @@
+FROM ubuntu:latest
+
+RUN apt-get update && \
+	echo $TZ > /etc/timezone     && \
+	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-pip  tzdata vim && \
+        apt-get clean all && \
+	pip install --no-cache-dir redis hiredis python-dateutil
+
+COPY codedir/trader /code/
+COPY codedir/common /code/
+
+WORKDIR /code/
+
+CMD ["python","-u","/code/trade.py"]

@@ -1,0 +1,15 @@
+FROM ubuntu:latest
+
+RUN apt-get update && \
+	echo $TZ > /etc/timezone     && \
+	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-websocket python-pip tzdata vim && \
+        apt-get clean all && \
+        mkdir /logs && \
+	pip install --no-cache-dir redis hiredis python-dateutil
+
+COPY codedir/cambistasim /code/
+COPY codedir/common      /code/
+
+WORKDIR /code/
+
+CMD ["python","-u","/code/cambista.py"]
