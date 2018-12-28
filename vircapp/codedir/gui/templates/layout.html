@@ -31,32 +31,54 @@
 	{% endwith %}
 	<div id="flash"></div>
 </div>
+<div class="panel panel-default tickerbar">
+	<ul id="tickers">
+	</ul>
+</div>
 {% endblock %}
 {% block content %}
-<main role="main" class="container">
-</main>
+<!-- main role="main" class="container">
+</main -->
 {% endblock %}
 {% block scripts %}
 {{super()}}
 
 <script>
 // sse alerts
-if (typeof(source) !== "undefined") {
-	console.log("close");
-       source.close();
+if (typeof(flashsse) !== "undefined") {
+       flashsse.close();
 }  
-var source = new EventSource("{{ url_for('sse.stream', channel='gui:flash') }}");
-source.addEventListener('success', msghandler) ;
-source.addEventListener('info', msghandler) ;
-source.addEventListener('danger', msghandler) ;
-function msghandler(event) {
+if (typeof(tickersse) !== "undefined") {
+       tickersse.close();
+}  
+var tickersse = new EventSource("{{ url_for('sse.stream', channel='cb:mkt:tick:pubsub') }}");
+var flashsse = new EventSource("{{ url_for('sse.stream', channel='gui:flash') }}");
+flashsse.addEventListener('success', flashhandler) ;
+flashsse.addEventListener('info', flashhandler) ;
+flashsse.addEventListener('danger', flashhandler) ;
+tickersse.addEventListener('update', tickerhandler) ;
+function flashhandler(event) {
 	html = "<div class='alert alert-" + event.type +
 		" alert-dismissible' role='alert' data-dismiss='alert' data-toggle='tooltip' title='Click to close'>" +
 		event.data + "</div>";
 	$(html).prependTo('#flash');
 }
+function tickerhandler(event) {
+	data = JSON.parse(event.data);
+	html = "<li class='ticker' id='ticker-" + data.ticker.pair + "'>" +
+		data.ticker.pair + ": " + data.ticker.price +
+		"</li>"
+	if (document.getElementById("ticker-" + data.ticker.pair)) {
+		$("#ticker-" + data.ticker.pair).replaceWith(html);
+	} else {
+		$(html).prependTo('#tickers');
+	}
+	$("#ticker-" + data.ticker.pair).fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
+	//console.log(JSON.parse(event.data));
+}
 $(window).on('beforeunload', function(){
-   		source.close();
+   		flashsse.close();
+		tickersse.close();
 });
 
 // Confirm with 'confirmation' class

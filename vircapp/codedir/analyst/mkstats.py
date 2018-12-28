@@ -26,7 +26,7 @@
 # - map-reduce old data
 
 import redis, time, json, os
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
 from datetime import datetime, timedelta
 from pprint import pprint
 
@@ -37,11 +37,6 @@ mongoport = "27017"
 database_name = "cryptomarket_db"
 
 looptime = int(os.environ.get('analyst_refresh', 2))
-# Colors for output
-GREEN = '\033[92m'
-RED = '\033[91m'
-YELLOW = '\033[93m'
-ENDC = '\033[0m'
 
 rds = redis.StrictRedis(host=redissrv, port=redisport, db=0)
 
@@ -87,11 +82,36 @@ laststats_query = [
   }
   ]
 
+def printstats():
+    # Colors for output
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    YELLOW = '\033[93m'
+    ENDC = '\033[0m'
+    # output some last periods to stdout
+    now = datetime.utcnow()
+    print "--------------"
+    print "Volume low     high    %        range \t{}'s actual price: {}{}{} - {:02d}:{:02d}:{:02d}".format(
+            collection, YELLOW, res["close"], ENDC, now.hour, now.minute, now.second)
+    for d in ["last_1h", "last_15m", "last_5m", "last_1m", "last_30s"]:
+         if stats.get(d):
+             if (stats[d]["oc%"] < 0):
+                 color = RED
+             elif (stats[d]["oc%"] > 0 ):
+                 color = GREEN
+             else:
+                 color = ENDC
+             if (stats[d]["close"] is not None):
+                 print "{:06.2f} {:06.2f} {:06.2f} {}{:+07.3f}{} {:5.2f} {}".format(
+                         stats[d]['volume'], stats[d]['low'], stats[d]['high'],
+                         color, stats[d]["oc%"], ENDC, stats[d]["range"], d)
+
 if __name__ == "__main__":
 
     # set a translation between coinbase's products and collection's name:
     products={}
     cbproducts = []
+    clast_id = {}
     for c in collections:
         p =  db[c].find_one()['product_id']
         products[c] = p
@@ -113,15 +133,22 @@ if __name__ == "__main__":
                 except IndexError: # no data retreived ; no trade in this period or a problem somewhere ?
                     if (lastprice is None):
                         continue
-                    res = {"volume":0, "low": None, "high": None, "average": None,
+                    res = {"volume":0, "low": None, "high": None, "average": None, 
                             "open": lastprice, "close": None, "oc%": 0, "range": 0}
                 else:
                     res["oc%"] = (res['close'] - res['open']) *100 / res['open']
                     res["range"] = res['high'] - res['low']
                 stats[d] = res
+                
+            stats["ticker"] = {"price": lastprice, "pair": products[collection]}
 
-    # update market data
-            # last price :
+            # PUBSUB
+            last_id = db[collection].find_one(sort=[('_id', DESCENDING)])['_id']
+            if ( clast_id.get(collection) != last_id):
+                rds.publish('cb:mkt:tick:pubsub', json.dumps({"type": "update", "data": stats}))
+                clast_id[collection] = last_id
+
+            # update market data if changed
             if ("last_15m" in stats):
                 lastprice = stats["last_15m"]['close']
                 if lastprice is None:
@@ -133,23 +160,6 @@ if __name__ == "__main__":
             rds.expire(rdkey, looptime + 2)
             # last periods
             rds.set("cb:mkt:change:" + products[collection], json.dumps(stats)) 
-
-            # output some last periods to stdout
-            now = datetime.utcnow()
-            print "Volume low     high    %        range \t{}'s actual price: {}{}{} - {:02d}:{:02d}:{:02d}".format(
-                    collection, YELLOW, res["close"], ENDC, now.hour, now.minute, now.second)
-            for d in ["last_1h", "last_15m", "last_5m", "last_1m", "last_30s"]:
-                 if stats.get(d):
-                     if (stats[d]["oc%"] < 0):
-                         color = RED
-                     elif (stats[d]["oc%"] > 0 ):
-                         color = GREEN
-                     else:
-                         color = ENDC
-                     if (stats[d]["close"] is not None):
-                         print "{:06.2f} {:06.2f} {:06.2f} {}{:+07.3f}{} {:5.2f} {}".format(
-                                 stats[d]['volume'], stats[d]['low'], stats[d]['high'],
-                                 color, stats[d]["oc%"], ENDC, stats[d]["range"], d)
-                
+            # printstats()
         # wait before next stats
         time.sleep(looptime)

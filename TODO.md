@@ -33,6 +33,7 @@ On websocket error, should be halted and rerun by docker-compose.
 
 ## Architecture
 * prefix all coinbase-specific containers by cb<container>
+* change network terms to back and front
 
 ## Maintenance
 * mongodb: mapReduce old market data

@@ -9,7 +9,7 @@
 import cbpro
 import os, time, json
 import dateutil.parser
-from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo import MongoClient, ASCENDING #, DESCENDING
 
 # pairs exchanged we want to get are defined in docker-compose.yml
 pairs = os.environ['pairs'].split() # or  ['BTC-EUR', 'ETH-EUR'] 
