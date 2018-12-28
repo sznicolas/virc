@@ -8,7 +8,6 @@ redisport = 6379
 mongosvr = "mongo"
 mongoport = "27017"
 database_name = "cryptomarket_db"
-__pairs__ = {}
 rds = None
 
 def redis_connect():
@@ -17,14 +16,10 @@ def redis_connect():
     rds = redis.StrictRedis(host=redissrv, port=redisport, db=0)
     try:
         rds.ping()
-        __pairs__ = json.loads(rds.get("virc:convproducts"))
     except redis.exceptions.ConnectionError as ce:
         print "No redis connection to {}:{}".format(redissrv, redisport)
         raise 
     return rds
-
-def pairconvert(pair):
-  return __pairs__.get(pair)
 
 def flash(message, level="info", sync=True):
     """ send message to flask in sync mode, or to sse """
@@ -37,6 +32,26 @@ def flash(message, level="info", sync=True):
     else:
         rds.publish("gui:flash", fmessage)
     print "utils.flash. fmessage type: {} - content: {}".format(type(fmessage), fmessage)
+
+class Pairs():
+    """ pairs exchanged we want to get are defined in docker-compose.yml """
+    def __init__(self, pairs):
+        self.pair = {}
+        for p in pairs:
+            self.pair[p] = p.lower().replace("-", "") 
+        
+    def mdbpair(self, pair):
+        return self.pair[pair]
+
+    def keys(self):
+        return self.pair.keys()
+
+    def values(self):
+        return self.pair.values()
+
+    def __getitem__(self, index):
+        return self.pair[index]
+
 
 if __name__ == "__main__":
     pass

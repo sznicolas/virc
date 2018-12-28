@@ -11,22 +11,12 @@ import os, time, json
 import dateutil.parser
 from pymongo import MongoClient, ASCENDING #, DESCENDING
 
-# pairs exchanged we want to get are defined in docker-compose.yml
-pairs = os.environ['pairs'].split() # or  ['BTC-EUR', 'ETH-EUR'] 
-# mongodb pairs, lowercase and without dash -
-mdbpair = dict( (map(lambda x: (x, x.lower().replace("-", "")) , pairs)))
-
-redissrv = "redis"
-redisport = 6379
-mongosvr = "mongo"
-mongoport = "27017"
-
-looptime = 30 # in seconds. Must never be higher than 60sec (can be disconnected by timeout)
+import utils
 
 class myWebsocketClient(cbpro.WebsocketClient):
     def on_open(self):
         self.url = "wss://ws-feed.pro.coinbase.com/"
-        self.products = pairs
+        self.products = pairs.keys()
         self.channels = ["matches"] #, "heartbeat"]
         self.message_count = 0
         self.encountered_types = []
@@ -44,7 +34,7 @@ class myWebsocketClient(cbpro.WebsocketClient):
             msg['isodate'] = dateutil.parser.parse(msg['time'])
             for f in [ "price", "size"]:
                 msg[f] = float(msg[f])
-            collection = db[mdbpair[msg['product_id']]]
+            collection = db[pairs[msg['product_id']]]
             collection.insert_one(msg)
      #   elif (msg['type'] == "heartbeat"):
 
@@ -61,12 +51,20 @@ class myWebsocketClient(cbpro.WebsocketClient):
 # -----------------------------------------------
 # -- init --
 
+looptime = 30 # in seconds. Must never be higher than 60sec (can be disconnected by timeout)
+
 print "Connecting to the services..."
 
+mongosvr = utils.mongosvr
+mongoport = utils.mongoport
 mongo_client = MongoClient('mongodb://' + mongosvr +":" + mongoport + '/')
-db = mongo_client.cryptomarket_db
-for k in mdbpair: 
-    collection = db[mdbpair[k]]
+db = mongo_client[utils.database_name]
+
+pairs = utils.Pairs(os.environ['pairs'].split()) # or  ['BTC-EUR', 'ETH-EUR'] 
+# pairs exchanged we want to get are defined in docker-compose.yml
+
+for k in pairs.keys(): 
+    collection = db[pairs[k]]
     collection.create_index([("isodate", ASCENDING)], name="isodate", unique=False)
 
 wsClient = myWebsocketClient()

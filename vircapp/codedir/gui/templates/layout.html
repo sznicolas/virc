@@ -32,7 +32,7 @@
 	<div id="flash"></div>
 </div>
 <div class="panel panel-default tickerbar">
-	<ul id="tickers">
+	<ul id="tickers" class="list-group">
 	</ul>
 </div>
 {% endblock %}
@@ -65,8 +65,9 @@ function flashhandler(event) {
 }
 function tickerhandler(event) {
 	data = JSON.parse(event.data);
-	html = "<li class='ticker' id='ticker-" + data.ticker.pair + "'>" +
-		data.ticker.pair + ": " + data.ticker.price +
+	html = "<li class='ticker list-group-item' id='ticker-" + data.ticker.pair + "'>" +
+		data.ticker.pair + ": " + data.ticker.price + 
+		" " + Number((data.m1440.oc).toFixed(2)) + "%" +
 		"</li>"
 	if (document.getElementById("ticker-" + data.ticker.pair)) {
 		$("#ticker-" + data.ticker.pair).replaceWith(html);
