@@ -20,6 +20,16 @@ app.config['SECRET_KEY'] = secret_key
 app.config['REDIS_URL'] = "redis://redis"
 app.register_blueprint(sse, url_prefix='/stream')
 
+# send data to the ticker panel
+panel_tickers = []  
+
+@app.context_processor
+def inject_common_data():
+    panel_tickers = []
+    for k in  rds.scan_iter(match="cb:mkt:tick:*"):
+        pair = k.split(":")[3]
+        panel_tickers.append({'name': k, 'pair': k.split(":")[-1], "price": rds.get(k)})
+    return dict(panel_tickers=panel_tickers)
 
 @app.before_request
 def get_status():

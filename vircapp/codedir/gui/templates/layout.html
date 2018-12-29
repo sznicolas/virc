@@ -6,45 +6,44 @@
 {% endblock %}
 
 {% block title %}Virc{% endblock %}
-{% block navbar %}
-<nav class="navbar-nav navbar-fixed-top bg-steel">
-	<div class="container-fluid">
-		<div class="navbar-header">
- 			<a class="navbar-brand" href="/">Virc</a>
+	{% block navbar %}
+	<nav class="navbar-nav navbar-fixed-top bg-steel">
+		<div class="container-fluid">
+			<div class="navbar-header">
+ 				<a class="navbar-brand" href="/">Virc</a>
+			</div>
+			<ul class="nav navbar-nav">
+				<li><a class="nav-item nav-link" href="{{ url_for('bots') }}">bots</a></li>
+				<li><a class="nav-item nav-link" href="{{ url_for('trade_status') }}">trade status</a></li>
+				<li><a class="nav-item nav-link" href="{{ url_for('redis_ls') }}">list redis</a></li>
+			</ul>
 		</div>
-		<ul class="nav navbar-nav">
-			<li><a class="nav-item nav-link" href="{{ url_for('bots') }}">bots</a></li>
-			<li><a class="nav-item nav-link" href="{{ url_for('trade_status') }}">trade status</a></li>
-			<li><a class="nav-item nav-link" href="{{ url_for('redis_ls') }}">list redis</a></li>
-		</ul>
+	</nav>
+	<div class="container">
+		{% with messages = get_flashed_messages(with_categories=true) %}
+  			{% if messages %}
+    			{% for category, message in messages %}
+	      		<div class="alert alert-{{ category }} alert-dismissible" role="alert" data-dismiss='alert' data-toggle='tooltip' title='Click to close'>
+    	  		{{ message }}
+      			</div>
+				{% endfor %}
+			{% endif %}
+		{% endwith %}
+		<div id="flash"></div>
 	</div>
-</nav>
-<div class="container fixed-top">
-	{% with messages = get_flashed_messages(with_categories=true) %}
-  		{% if messages %}
-    		{% for category, message in messages %}
-      		<div class="alert alert-{{ category }} alert-dismissible" role="alert" data-dismiss='alert' data-toggle='tooltip' title='Click to close'>
-      		{{ message }}
-      		</div>
-			{% endfor %}
-		{% endif %}
-	{% endwith %}
-	<div id="flash"></div>
-</div>
-<div class="panel panel-default tickerbar">
-	<ul id="tickers" class="list-group">
-	</ul>
-</div>
-{% endblock %}
-{% block content %}
+	<div class="container">
+		{% include 'includes/ticker_panel.html' %}
+	</div>
+	{% endblock %}
+	{% block content %}
 <!-- main role="main" class="container">
 </main -->
-{% endblock %}
+	{% endblock %}
 {% block scripts %}
 {{super()}}
 
+<script type="text/javascript" src="{{ url_for('static', filename='utils.js') }}"></script>
 <script>
-// sse alerts
 if (typeof(flashsse) !== "undefined") {
        flashsse.close();
 }  
@@ -52,39 +51,10 @@ if (typeof(tickersse) !== "undefined") {
        tickersse.close();
 }  
 var tickersse = new EventSource("{{ url_for('sse.stream', channel='cb:mkt:tick:pubsub') }}");
-var flashsse = new EventSource("{{ url_for('sse.stream', channel='gui:flash') }}");
+var flashsse = new EventSource("{{ url_for('sse.stream', channel='gui:flash') }}"); 
 flashsse.addEventListener('success', flashhandler) ;
 flashsse.addEventListener('info', flashhandler) ;
 flashsse.addEventListener('danger', flashhandler) ;
 tickersse.addEventListener('update', tickerhandler) ;
-function flashhandler(event) {
-	html = "<div class='alert alert-" + event.type +
-		" alert-dismissible' role='alert' data-dismiss='alert' data-toggle='tooltip' title='Click to close'>" +
-		event.data + "</div>";
-	$(html).prependTo('#flash');
-}
-function tickerhandler(event) {
-	data = JSON.parse(event.data);
-	html = "<li class='ticker list-group-item' id='ticker-" + data.ticker.pair + "'>" +
-		data.ticker.pair + ": " + data.ticker.price + 
-		" " + Number((data.m1440.oc).toFixed(2)) + "%" +
-		"</li>"
-	if (document.getElementById("ticker-" + data.ticker.pair)) {
-		$("#ticker-" + data.ticker.pair).replaceWith(html);
-	} else {
-		$(html).prependTo('#tickers');
-	}
-	$("#ticker-" + data.ticker.pair).fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
-	//console.log(JSON.parse(event.data));
-}
-$(window).on('beforeunload', function(){
-   		flashsse.close();
-		tickersse.close();
-});
-
-// Confirm with 'confirmation' class
-$('.confirmation').on('click', function () {
-	return confirm('Are you sure?');
-});
 </script>
 {% endblock %}

@@ -1,0 +1,14 @@
+<div class="panel panel-default ticker-bar">
+	<ul id="tickers" class="list-group">
+	{% for ticker in panel_tickers %}
+		<li class='ticker list-group-item' id='panel-ticker-{{ ticker.pair }}'>
+			<div class="row">
+					<div class="col-md-5 panel-ticker-pair">{{ ticker.pair }}</div>
+					<div class="col-md-3 panel-ticker-price">{{ticker.price}}</div>
+					<div class="col-md-4 panel-ticker-oc">__ %</div>
+			</div>
+		</li>
+	{% endfor %}
+	</ul>
+</div>
+
