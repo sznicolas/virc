@@ -6,17 +6,29 @@
 {% endblock %}
 
 {% block title %}Virc{% endblock %}
-	{% block navbar %}
+{% block navbar %}
 	<nav class="navbar-nav navbar-fixed-top bg-steel">
-		<div class="container-fluid">
-			<div class="navbar-header">
- 				<a class="navbar-brand" href="/">Virc</a>
+		<div class="container">
+ 			<a class="navbar-brand" href="/">Virc</a>
+			<button class="navbar-toggle" data-toggle="collapse" data-target=".virc-menu">
+					 <i class="glyphicon glyphicon-menu-hamburger"></i>
+			</button>
+			<div class="collapse navbar-collapse virc-menu">
+				<ul class="nav navbar-nav">
+					<li><a class="nav-item nav-link" href="{{ url_for('bots') }}">bots</a></li>
+					<li><a class="nav-item nav-link" href="{{ url_for('trade_status') }}">trade status</a></li>
+					<li class="dropdown">
+						<a class="dropdown-toggle glyphicon glyphicon-wrench nav-link" data-toggle="dropdown" href="#">
+								<span class="caret"></span>
+						</a>
+						<ul class="dropdown-menu">
+							<li>
+								<a class="nav-item nav-link" href="{{ url_for('redis_ls') }}">list redis</a>
+							</li>
+						</ul>
+					</li>
+				</ul>
 			</div>
-			<ul class="nav navbar-nav">
-				<li><a class="nav-item nav-link" href="{{ url_for('bots') }}">bots</a></li>
-				<li><a class="nav-item nav-link" href="{{ url_for('trade_status') }}">trade status</a></li>
-				<li><a class="nav-item nav-link" href="{{ url_for('redis_ls') }}">list redis</a></li>
-			</ul>
 		</div>
 	</nav>
 	<div class="container">
@@ -34,11 +46,11 @@
 	<div class="container">
 		{% include 'includes/ticker_panel.html' %}
 	</div>
-	{% endblock %}
-	{% block content %}
-<!-- main role="main" class="container">
-</main -->
-	{% endblock %}
+{% endblock %}
+
+{% block content %}
+{% endblock %}
+
 {% block scripts %}
 {{super()}}
 

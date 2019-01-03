@@ -33,7 +33,7 @@
 							</th>
 						<td>{{ bot['type'] }}</td>
 						<td>
-							<span class="glyphicon {{ 'glyphicon-repeat' if bot['instructions_loop'] else 'glyphicon-list-alt' }}" data-toggle="tooltip" title="{{ 'Loop' if bot['instructions_loop'] else 'One shot' }}"></span>
+							<span class="glyphicon {{ 'glyphicon-repeat' if bot['instructions_loop'] else 'glyphicon-th-list' }}" data-toggle="tooltip" title="{{ 'Loop' if bot['instructions_loop'] else 'One shot' }}"></span>
 						</td>
 						<td>{{ bot['instructions_count'] }}</td>
 							<td><a href="{{ url_for("bot_stop", uid=bot['uid']) }}" role="button" class="btn btn-danger btn-sm confirmation">
