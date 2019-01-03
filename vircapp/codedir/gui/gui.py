@@ -26,7 +26,9 @@ panel_tickers = []
 @app.context_processor
 def inject_common_data():
     panel_tickers = []
-    for k in  rds.scan_iter(match="cb:mkt:tick:*"):
+    #tick_keys = rds.scan(match="cb:mkt:tick:*"):
+    #for k in rds.scan_iter(match="cb:mkt:tick:*"):
+    for k in sorted(rds.scan(match="cb:mkt:tick:*", count=100)[1]):
         pair = k.split(":")[3]
         panel_tickers.append({'name': k, 'pair': k.split(":")[-1], "price": rds.get(k)})
     return dict(panel_tickers=panel_tickers)
@@ -36,6 +38,10 @@ def get_status():
     while ( rds.llen("gui:message") > 0 ):
         msg = json.loads(rds.lpop("gui:message"))
         flash(msg['data'], msg['type'])
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
 
 @app.route("/")
 def root():
@@ -60,7 +66,10 @@ def bots():
 
 @app.route("/bot/<uid>")
 def bot(uid):
-    bot   = json.loads(rds.hget("trader:rb",  uid))
+    res = rds.hget("trader:rb",  uid)
+    if res is None:
+        return render_template("404.html", title="<h1>Bot {} was not found</h1>".format(uid)), 404
+    bot = json.loads(res)
     ihist=[]
     for h in rds.lrange("trader:hist:" + uid, 0, -1):
         ihist.append(json.loads(h))
@@ -76,15 +85,15 @@ def bots_stopall():
     rds.rpush("trader:action", json.dumps({"type": "stop_all_bots"}))
     return render_template("bots.html")
 
-@app.route("/bots_new_simple", methods=["GET", "POST"])
-def bots_new_simple():
+@app.route("/bot_new_simple", methods=["GET", "POST"])
+def bot_new_simple():
     form = SimpleBot()
     form.pair.choices = [(p,p) for p in pairs]
     if form.validate_on_submit():
         instruction1 = { 
-                "side": "buy", "price": float(form.buy_val.data),
+                "side": "buy", "price": float(form.buy_at.data),
                 "size": float(form.size.data), "type": "order" }
-        instruction2 = { "side": "sell", "price" : float(form.sell_val.data),
+        instruction2 = { "side": "sell", "price" : float(form.sell_at.data),
                 "size": float(form.size.data), "type": "order"}
         if (form.begin_sell.data):
             instructions = [ instruction2, instruction1]
@@ -100,7 +109,7 @@ def bots_new_simple():
               }
         rds.lpush("trader:build", str(json.dumps(bot)))
         return redirect(url_for("bots"))
-    return render_template("bots_new_simple.html", form=form)
+    return render_template("bot_new_simple.html", form=form)
 
 @app.route("/trade_status")
 def trade_status():

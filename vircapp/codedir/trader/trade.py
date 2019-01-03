@@ -8,15 +8,7 @@ import utils
 
 logging.basicConfig(format='%(asctime)s %(message)s', filename='/logs/trader.log', level=logging.NOTSET)
 
-pairs = ['BTC-EUR'] #, 'ETH-EUR', 'ETH-BTC'] # managed pairs
-
-redissrv = "redis"
-redisport = 6379
-cambista_list = "tocambista"
 waittime = 1 # in seconds.
-
-running_bots = {} # {uid: proc} proc is from subprocess.Popen
-
 
 def check_bots():
     """ check if all bots are still running """
@@ -62,7 +54,8 @@ def stop_all_bots():
 # -----------------------------------------------
 # -- init --
 
-print "Connecting to the services..."
+logging.info("Starting trader...")
+running_bots = {} # {uid: proc} proc is from subprocess.Popen
 
 rds = utils.redis_connect()
 

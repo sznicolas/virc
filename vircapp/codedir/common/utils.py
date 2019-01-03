@@ -23,7 +23,7 @@ def redis_connect():
 
 def flash(message, level="info", sync=True):
     """ send message to flask in sync mode, or to sse """
-    print "utils.flash. type: {} - content: {}".format(type(message), message)
+#    print "utils.flash. type: {} - content: {}".format(type(message), message)
     fmessage = json.dumps( {
         "type": level,
         "data": message })
@@ -31,7 +31,7 @@ def flash(message, level="info", sync=True):
         rds.lpush("gui:message", fmessage)
     else:
         rds.publish("gui:flash", fmessage)
-    print "utils.flash. fmessage type: {} - content: {}".format(type(fmessage), fmessage)
+#    print "utils.flash. fmessage type: {} - content: {}".format(type(fmessage), fmessage)
 
 class Pairs():
     """ pairs exchanged we want to get are defined in docker-compose.yml """

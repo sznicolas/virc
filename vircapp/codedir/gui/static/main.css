@@ -10,6 +10,15 @@ h1, h2, h3, h4, h5, h6 {
 	color: #444444;
 }
 
+.thick
+{
+    font-weight: bold;
+}
+
+.table-striped > tbody > tr:nth-child(2n+1) > td, .table-striped > tbody > tr:nth-child(2n+1) > th {
+   background-color: #f4f4ff;
+}
+
 .bg-steel {
     background-color: #5f788a;
 }
@@ -36,7 +45,7 @@ h1, h2, h3, h4, h5, h6 {
 	background-color: #5f788a;
 	box-shadow: 0 0 3px gray;
 }
-
+	
 .ticker {
 	background-color: #2f485a;
   	font-size: 80%;
@@ -52,17 +61,9 @@ h1, h2, h3, h4, h5, h6 {
 	color: #330000;
 }
 
-.thick
-{
-    font-weight: bold;
-}
-
 .active_instruction
 {
     font-weight: bold;
     background-color: lightblue;
 }
 
-.table-striped > tbody > tr:nth-child(2n+1) > td, .table-striped > tbody > tr:nth-child(2n+1) > th {
-   background-color: #f4f4ff;
-}

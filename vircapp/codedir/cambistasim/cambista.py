@@ -1,12 +1,24 @@
 #!/usr/bin/env python
 
-import sys, time, json, logging, uuid, datetime
+import sys, time, json, logging, uuid, datetime, os
 import utils
 
 looptime = 1 # in seconds.
 
-# loggin
+# logging
 logging.basicConfig(format='%(asctime)s %(message)s', filename='/logs/cambista_sim.log', level=logging.NOTSET)
+
+# conf
+c_camb = os.environ.get("cambista_base_channel")
+c_tobot = "trader:tobot"
+channels = {'in'            : c_camb + ":orders",
+            'error'         : c_camb + ":error",
+            'order_filled'  : c_tobot   + ":order_filled:",
+            'new_order'     : c_tobot   + ":new_order:",
+            'cancel_order'  : c_tobot   + ":cancel_order:"
+            }
+cambista_role = "sim"
+cambista_platform = "Coinbase Emulated"
 
 class OrderBook(object):
     def __init__(self, redis_connection):
@@ -43,8 +55,7 @@ class OrderBook(object):
     def cancel_order(self, order_id):
         index = self.find_order_by_id(order_id)
         if index is None:
-            rds.lpush("gui:message", json.dumps(
-                { "type": "error", "message": "order '{}' not found. Can't be cancelled".format(order_id) }))
+            utils.flash("order '{}' not found. Can't be cancelled".format(order_id), "error", sync=false )
         else:
             self.del_order(index)
 
@@ -73,8 +84,13 @@ logging.info("Started.")
 orderbook = OrderBook(redis_connection=rds)
 
 while (True):
+    # declare myself as running
+    regkey = os.environ.get("CAMBISTA_CHANNELS") + c_camb
+    rds.set(regkey, json.dumps({"role": cambista_role, "platform": cambista_platform, "channels": channels}))
+    rds.expire(regkey, 60)
+
     # get new message
-    rdsmsg = rds.brpop("cambisim:order", looptime)
+    rdsmsg = rds.brpop(channels['in'], looptime)
     if (rdsmsg is not None):
         logging.info("Cambista received: '%s'" % str(rdsmsg))
         try:
@@ -83,28 +99,33 @@ while (True):
             order_msg['uid'], order_msg['type']
         except:
             logging.error("Message is not well formatted. Pushed to cambisim:error")
-            rds.lpush("cambisim:error", str(rdsmsg))
+            rds.lpush(channels['error'], str(rdsmsg))
             continue
         if (order_msg['type'] == "order"):
             if ( order_msg['side'] == "buy"):
                 order_id = orderbook.buy(order_msg)
             elif ( order_msg['side'] == 'sell'):
                 order_id = orderbook.sell(order_msg)
-            rds.lpush("trader:tobot:" + order_msg['uid'], json.dumps({ 'type': 'received', 'order_id': order_id}))
+            rds.lpush(channels['new_order'] + order_msg['uid'], json.dumps({ 'type': 'received', 'order_id': order_id}))
             utils.flash("Order '%s' received" % order_id, "info", sync=False)
         elif (order_msg['type'] == "cancel_order"):
             logging.info("Cancel Order '%s'" % order_msg['order_id']) 
             orderbook.cancel_order(order_msg['order_id'])
-            rds.lpush("trader:tobot:order_cancelled:" + order_msg['uid'], json.dumps({ 'type': 'order_cancelled', 'order_id': order_msg['order_id']}))
-            utils.flash("Order '%s' cancelled" % msg['order_id'], "info", sync=False)
+            rds.lpush(channels['cancel_order'] + order_msg['uid'], json.dumps({ 'type': 'order_cancelled', 'order_id': order_msg['order_id']}))
+            utils.flash("Order '%s' cancelled" % order_msg['order_id'], "info", sync=False)
         else:
           logging.warning("Message type unknown in " + str(order_msg))
 
     # simulate market
     tickers = {}
     for k in  rds.scan_iter(match="cb:mkt:tick:*"):
-      pair = k.split(":")[3]
-      tickers[pair] = float(rds.get("cb:mkt:tick:" + pair))
+        pair = k.split(":")[3]
+        try:
+            tickers[pair] = float(rds.get("cb:mkt:tick:" + pair))
+        except ValueError:
+            print "No value for ticker '" + pair + "', exiting."
+            sys.exit(1)
+
     i = 0
     delindexes = []
     for order in orderbook.orders:
@@ -122,7 +143,7 @@ while (True):
                     "time": datetime.datetime.now().isoformat(),
                     "type": "done", 
                 }
-            rds.lpush("trader:order_filled:" + order['order_id'], json.dumps(msg))
+            rds.lpush(channels['order_filled'] + order['order_id'], json.dumps(msg))
             utils.flash("Order '%s' filled" % msg['order_id'], "info", sync=False)
             logging.info("Order filled: " + order['order_id'])
         i += 1

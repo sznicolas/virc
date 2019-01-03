@@ -94,7 +94,7 @@ if __name__ == "__main__":
             collection = pairs.mdbpair(pair)
             # query for all periods
             for period in lperiods:
-                stats[period] = {}
+                stats["m" + str(period)] = {}
                 # adapt the query for the current time and the period
                 laststats_query[0]['$match']['isodate']['$gt'] = datetime.utcnow() - timedelta(minutes = period)
                 try :
@@ -114,11 +114,15 @@ if __name__ == "__main__":
             stats["ticker"] = {"price": lastprice[pair], "pair": pair}
 
             # PUBSUB
-            last_id = db[collection].find_one(sort=[('_id', DESCENDING)])['_id']
+            res = db[collection].find_one(sort=[('_id', DESCENDING)])
+            if res is None:
+                # no data yet, we skip...
+                continue
+            last_id = res['_id']
             if ( coll_last_id.get(collection) != last_id):
                 rds.publish('cb:mkt:tick:pubsub', json.dumps({"type": "update", "data": stats}))
                 coll_last_id[collection] = last_id
-
+            # put ticker in redis 
             rdkey = "cb:mkt:tick:" + pair
             rds.set(rdkey, str(lastprice[pair]))
             rds.expire(rdkey, looptime + 2)

@@ -8,7 +8,7 @@ services:
         volumes:
             - ../mongodata:/data/db
         networks:
-            - public-net
+            - back
 
     redis:
         image: redis:5.0-rc-alpine
@@ -19,8 +19,8 @@ services:
         ports:
             - "6379:6379"
         networks:
-            - public-net
-            - private-net
+            - back
+            - front
 
     grabber:
         build: 
@@ -31,7 +31,7 @@ services:
             - redis
             - mongo
         networks:
-            - public-net
+            - back
         env_file:
             - conf.env
 
@@ -45,7 +45,7 @@ services:
         env_file:
             - conf.env
         networks:
-            - public-net
+            - back
 
     gui:
         build: 
@@ -57,7 +57,7 @@ services:
         depends_on:
             - analyst
         networks:
-            - private-net
+            - front
         ports:
             - "5000:5000"
 
@@ -69,7 +69,7 @@ services:
         env_file:
             - conf.env
         networks:
-            - private-net
+            - front
         volumes:
             - ../logs:/logs
         depends_on:
@@ -77,6 +77,8 @@ services:
             - analyst
 
     cambistasim:
+        environment:
+            - "cambista_base_channel=cambista:sim"
         build: 
           context: .
           dockerfile: Dockerfile.cambistasim
@@ -84,28 +86,30 @@ services:
         env_file:
             - conf.env
         networks:
-            - private-net
+            - front
         volumes:
             - ../logs:/logs
         depends_on:
             - gui
 
-    cambista:
+    cambistacb:
+        environment:
+            - "cambista_base_channel=cambista:cb"
         build: 
           context: .
-          dockerfile: Dockerfile.cambista
+          dockerfile: Dockerfile.cambistacb
         restart: on-failure
         env_file:
             - conf.env
         networks:
-            - private-net
+            - front
         volumes:
             - ../logs:/logs
         depends_on:
             - gui
 
 networks:
-        private-net:
+        front:
                 driver: bridge
-        public-net:
+        back:
                 driver: bridge
