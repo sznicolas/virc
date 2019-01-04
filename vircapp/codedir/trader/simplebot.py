@@ -10,8 +10,6 @@ logging.basicConfig(format='%(asctime)s %(message)s', filename='/logs/simple_bot
 
 rbs = "trader:rb" # redis hash containing running bot status
 hbs = "trader:hb" # redis hash containing history of ended bot status
-rds_to_cambista = "cambista:cb:orders" # redis queue for orders
-rds_to_cambista_sim = "cambista:sim:orders" # redis queue for sim (fake) orders
 
 # --- functions ---
 def on_sigterm(signum, frame):
@@ -32,9 +30,9 @@ def update_blueprint(bot):
     print "Bot updated, see ", channel
 
 def send_order(bot):
-    res = rds.lpush(rds_cambista, json.dumps(bot.get_current_instruction()))
+    res = rds.lpush(cambista_defs['channels']['in'], json.dumps(bot.get_current_instruction()))
     # wait order_id
-    msg = rds.brpop("trader:tobot:new_order:" + bot.uid)[1]
+    msg = rds.brpop(cambista_defs['channels']['new_order'] + bot.uid)[1]
     logging.info("Received:" + msg)
     msg = json.loads(msg)
     if ( msg['type'] == "refused"):
@@ -47,9 +45,9 @@ def send_order(bot):
 def cancel_order(bot, order_id):
     logging.info("Cancelling " + order_id)
     # send cancel order before the others with rpush
-    rds.rpush(rds_cambista, json.dumps( { 'type': "cancel_order",
+    rds.rpush(cambista_defs['channels']['in'], json.dumps( { 'type': "cancel_order",
                 "order_id": order_id, 'uid': bot.uid } ))
-    rds.brpop("trader:tobot:cancel_order:" + bot.uid)
+    rds.brpop(cambista_defs['channels']['cancel_order'] + bot.uid)
 
 
 def cancel_orders(bot):
@@ -77,11 +75,8 @@ except Exception as e:
     sys.exit(9)
 
 mybot = bot.SimpleBot(botdata)
-# where to send orders (sim|real)
-if mybot.issim_mode():
-    rds_cambista = rds_to_cambista_sim
-else:
-    rds_cambista = rds_to_cambista
+# get cambista channels
+cambista_defs = json.loads(rds.get(mybot.get_cambista_link()))
 rds.delete("trader:startbot:" + uid)
 update_blueprint(mybot)
 
@@ -108,7 +103,7 @@ while (True):
         logging.info("Reloaded bot, instruction previously sent")
 
     logging.info("Waiting for order %s execution..." % waited_order_id)
-    rds.brpop("trader:tobot:order_filled:" + waited_order_id)
+    rds.brpop(cambista_defs['channels']['order_filled'] + waited_order_id)
     logging.info("Order %s is filled." % waited_order_id)
     mybot.set_order_filled(waited_order_id)
 

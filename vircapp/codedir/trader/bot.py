@@ -7,7 +7,8 @@ class SimpleBot(object):
         self.pid = os.getpid()
         self.uid = bot['uid']
         self.pair = bot['pair']
-        self.sim_mode = bot.get('sim_mode')
+        self.cambista_link = bot.get('cambista_link')
+        self.cambista_title = bot.get('cambista_title')
         self.status = "running"
         self.start_date = datetime.datetime.now()
         self.instructions_loop = bot.get('instructions_loop')
@@ -25,7 +26,8 @@ class SimpleBot(object):
             "uid": self.uid,
             "type": "simple",
             "pair": self.pair,
-            "sim_mode": self.sim_mode,
+            "cambista_link": self.cambista_link,
+            "cambista_title": self.cambista_title,
             "start_date": self.start_date.isoformat(),
             "instructions_loop": self.instructions_loop,
             "instructions_index": self.instructions_index,
@@ -36,8 +38,8 @@ class SimpleBot(object):
     def get_status(self):
         return self.status
 
-    def issim_mode(self):
-        return self.sim_mode
+    def get_cambista_link(self):
+        return self.cambista_link
 
     def next_instruction(self):
         self.instructions_index += 1

@@ -89,6 +89,10 @@ def bots_stopall():
 def bot_new_simple():
     form = SimpleBot()
     form.pair.choices = [(p,p) for p in pairs]
+    form.cambista.choices = []
+    for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
+        cambista_info = json.loads(rds.get(k))
+        form.cambista.choices.append((k, "{} ({})".format(cambista_info['platform'], cambista_info['role'])))
     if form.validate_on_submit():
         instruction1 = { 
                 "side": "buy", "price": float(form.buy_at.data),
@@ -104,7 +108,8 @@ def bot_new_simple():
                 "name": form.bot_name.data,
                 "instructions_loop": form.instructions_loop.data,
                 "pair": form.pair.data,
-                "sim_mode": form.sim_mode.data,
+                "cambista_link": form.cambista.data,
+                "cambista_title": dict(form.cambista.choices).get(form.cambista.data),
                 "instructions" : instructions
               }
         rds.lpush("trader:build", str(json.dumps(bot)))

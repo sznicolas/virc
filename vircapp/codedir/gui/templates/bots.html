@@ -28,8 +28,8 @@
 				{% for bot in bots %}
 					<tr>
 							<th scope="row">
-									<span class="glyphicon {{ 'glyphicon-wrench' if bot['sim_mode'] else 'glyphicon-briefcase' }}" data-toggle="tooltip" title="{{ 'Simulation mode' if bot['sim_mode'] else 'Prod/Real mode' }}"></span>
-									<a href="/bot/{{ bot['uid'] }}">{{ "{} ({}...)".format(bot['name'], bot['uid'][:8]) }}</a>
+									<span class="glyphicon {{ 'glyphicon-briefcase' if 'real' in bot['cambista_title'] else 'glyphicon-wrench' }}" data-toggle="tooltip" title="{{ bot['cambista_title'] }}"></span>
+									<a href="/bot/{{ bot['uid'] }}">{{ bot['name'] }}</a>
 							</th>
 						<td>{{ bot['type'] }}</td>
 						<td>
