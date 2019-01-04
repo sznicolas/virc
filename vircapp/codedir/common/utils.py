@@ -1,4 +1,4 @@
-# Utils v 1.0
+# Utils v 1.1
 
 import redis
 import json
@@ -34,7 +34,8 @@ def flash(message, level="info", sync=True):
 #    print "utils.flash. fmessage type: {} - content: {}".format(type(fmessage), fmessage)
 
 class Pairs():
-    """ pairs exchanged we want to get are defined in docker-compose.yml """
+    """ pairs exchanged we want to get are defined in docker-compose.yml 
+    a conversion is needed since mongodb collections are in lowercase, without dash sign - """
     def __init__(self, pairs):
         self.pair = {}
         for p in pairs:

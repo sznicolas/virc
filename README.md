@@ -22,16 +22,17 @@ In order to send real orders, you must generate a read-only key and a read-write
 open http://localhost:5000
 
 ## Structure
-All the containers are in the same docker-compose.
+All the containers are in the same docker-compose. The is a back and a front network.
 
-virc public containers : 
+virc backend containers : 
 * a mongodb server, which stores the market data in collections (the name of each collection is the pair name in lowercase, without dash, for example "btceur"
 * a redis server, which provides the data shared between different containers (see below)
 * Grabber get the market informations on the coinbase servers, via its API
 * Analyst, calculates some market data, and sends it in the redis server.
 
-virc private containers :
+virc frontend containers :
 * Cambista is in charge to send orders to the coinbase API and informs the trader when an update is made.
+* Cambista can be duplicated to be used also in the coinbase's sandbox.
 * CambistaSim emulates locally your book order, generates and sends updates to trader 
 * Trader spawns in its container the bots. It receives orders from redis lists.
 * a GUI to define bots and monitor.
