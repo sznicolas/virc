@@ -37,13 +37,14 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
 }
 
+
 .ticker-bar {
 	position: fixed;
 	z-index: 1;
 	right: 0;
 	color: #dbe5eb;
 	background-color: #5f788a;
-	box-shadow: 0 0 3px gray;
+	box-shadow: 1px 1px 3px gray;
 }
 	
 .ticker {
@@ -54,9 +55,31 @@ h1, h2, h3, h4, h5, h6 {
 	font-weight: bold;
 }
 
+.bot-elements {
+	border-radius: 10px;
+	box-shadow: 1px 1px 5px #5f788a;
+	padding: 10px;
+	margin: 3px;
+	max-width: 600px !important;
+}
+
+.bot-elements > h2 {
+	border-bottom: 1px solid #5f788a;
+	margin: 3px 20px 20px 20px;
+}
 .active_instruction
 {
-    font-weight: bold;
+	border-radius: 10px;
     background-color: lightblue;
+	box-shadow: 1px 1px 5px lightblue;
+	margin: 2px;
+  	font-weight: 500;
+}
+
+.instruction
+{
+	border-radius: 10px;
+	box-shadow: 1px 1px 5px lightblue;
+	margin: 3px;
 }
 

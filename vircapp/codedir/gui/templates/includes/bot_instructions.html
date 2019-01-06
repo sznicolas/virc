@@ -1,18 +1,32 @@
 {% block body %}
-<h2>{{ title }}</h2>
-
-{% for instruction in instructions %}
-<div class="row {{ 'active_instruction' if instruction['wait_filled'] else '' }}">
-	<div class="col-md-2">{{ instruction['start_date'][:-7] if instruction['start_date'] else "-" }}</div>
-	{% if title == "History" %}
-		<div class="col-md-2">{{ instruction['execution_date'][:-7] if instruction['execution_date'] else "-" }}</div>
-	{% endif %}
-	<div class="col-md-2">{{ instruction['side'] }} {{ instruction['size'] }} {{ instruction['pair'][:3] }}</div>
-	<div class="col-md-2">rate: {{ instruction['price'] }} {{ instruction['pair'][-3:] + "/" + instruction['pair'][:3]  }}</div>
-	{% if instruction['wait_filled'] %}
-		<div class="col-md-2">Wait {{ instruction['wait_filled'] }}</div>
-	{% endif %}
-</div>	
-{% endfor %}
-
+<div class="row">
+	<div class="bot-elements">
+		<h2>{{ title }}</h2>
+		{% for instruction in instructions %}
+			<div class="container-fluid {{ 'active_instruction' if instruction['wait_filled'] else 'instruction' }}">
+				<div class="row">
+					<div class="col-sm-3">start_date:</div>
+					<div class="col-sm-9">{{ instruction['start_date'][:-7] if instruction['start_date'] else "-" }}</div>
+				</div>
+				{% if title == "History" %}
+					<div class="row">
+						<div class="col-sm-3">execution_date:</div>
+						<div class="col-sm-9">{{ instruction['execution_date'][:-7] if instruction['execution_date'] else "-" }}</div>
+					</div>
+				{% endif %}
+				<div class="row">
+					<div class="col-sm-2">{{ instruction['side'] }}:</div>
+					<div class="col-sm-4">{{ instruction['size'] }} {{ instruction['pair'][:3] }}</div>
+					<div class="col-md-6">@ {{ instruction['price'] }} {{ instruction['pair'][-3:] + "/" + instruction['pair'][:3]  }}</div>
+				</div>
+				{% if instruction['wait_filled'] %}
+					<div class="row">
+						<div class="col-sm-2">Wait:</div>
+						<div class="col-sm-9">{{ instruction['wait_filled'] }}</div>
+					</div>
+				{% endif %}
+			</div>
+		{% endfor %}
+	</div>	
+</div>
 {% endblock %}

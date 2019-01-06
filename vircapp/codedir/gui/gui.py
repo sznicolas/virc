@@ -4,7 +4,7 @@ from flask import Flask, render_template, redirect, flash, url_for
 from flask_bootstrap import Bootstrap
 from flask_sse import sse
 
-from forms import SimpleBot
+from forms import SimpleBot, StopLossBot
 
 import utils
 
@@ -23,6 +23,7 @@ app.register_blueprint(sse, url_prefix='/stream')
 # send data to the ticker panel
 panel_tickers = []  
 
+# --------- flash, streams, ... ---------
 @app.context_processor
 def inject_common_data():
     panel_tickers = []
@@ -39,10 +40,7 @@ def get_status():
         msg = json.loads(rds.lpop("gui:message"))
         flash(msg['data'], msg['type'])
 
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template('404.html'), 404
-
+# --------- Main Pages ---------
 @app.route("/")
 def root():
     tickers={}
@@ -52,6 +50,11 @@ def root():
     print tickers
     return render_template("index.html", tickers=tickers)
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+# --------- Bot Pages ---------
 @app.route("/bots")
 def bots():
     newbots = [] 
@@ -116,10 +119,18 @@ def bot_new_simple():
         return redirect(url_for("bots"))
     return render_template("bot_new_simple.html", form=form)
 
+@app.route("/bot_new_stop_loss", methods=["GET", "POST"])
+def bot_new_stop_loss():
+    form = StopLossBot()
+    form.pair.choices = [(p,p) for p in pairs]
+    return render_template("bot_new_stop_loss.html", form=form)
+
+# --------- Trade Pages ---------
 @app.route("/trade_status")
 def trade_status():
     return render_template("trades.html")
 
+# --------- Conf Pages ---------
 @app.route("/redis")
 def redis_ls():
     # redis known keys

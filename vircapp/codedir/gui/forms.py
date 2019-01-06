@@ -14,3 +14,11 @@ class SimpleBot(FlaskForm):
     sell_at = DecimalField('Sell at', id='f_sell_at', places=2, validators=[InputRequired(), NumberRange(min=0)])
     size = DecimalField("Size", places=2, id='f_size', validators=[InputRequired(), NumberRange(min=0)])
     submit = SubmitField('Create and run')
+
+class StopLossBot(FlaskForm):
+    bot_name = StringField('Bot name', validators=[InputRequired()])
+    bypair = BooleanField('By Pair')
+    pair   = SelectField('Pair')
+    bybot  = BooleanField('By Bot') 
+    submit = SubmitField('Create and run')
+
