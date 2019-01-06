@@ -15,10 +15,19 @@ hbs = "trader:hb" # redis hash containing history of ended bot status
 def on_sigterm(signum, frame):
     """ trader.py sends SIGTERM to stop the bot then wait() """
     logging.info("received SIGTERM, will cancel orders and halt.")
-    cancel_orders(mybot)
-    mybot.end(status="cancelled") 
+    if (mybot.get_status() == "running") :
+        mybot.end("cancelled")
+    stop_bot(mybot, cancel_orders=True)
+
+def stop_bot(bot, cancel_orders=False, status=None, exitcode=0, alert_trader=True):
+    if (cancel_orders):
+        cancel_orders(mybot)
+    if (status):
+        mybot.end(status=status) 
+    if (alert_trader):
+        rds.lpush("trader:action", json.dumps({'uid': mybot.uid, "type": "stop_bot"}))
     update_blueprint(mybot)
-    sys.exit(0)
+    sys.exit(exitcode)
 
 def update_blueprint(bot):
     if ( bot.get_status() == "running"):
@@ -83,20 +92,12 @@ update_blueprint(mybot)
 utils.flash("bot '{}' initialized (uid: {}, PID: {}".format(mybot.name, mybot.uid, mybot.pid), "success", sync=False)
 
 while (True):
-    if (mybot.get_current_instruction() is None):
-        mybot.end()
-        update_blueprint(mybot)
-        sys.exit(0)
-
     # could start by waiting if we have a reloaded bot
     waited_order_id = mybot.get_waited_order_id()
     if waited_order_id is None:
         waited_order_id = send_order(mybot)
         if (waited_order_id is None):
-            mybot.end(status="order refused")
-            rds.lpush("trader:action", json.dumps({'uid': mybot.uid, "type": "stop_bot"}))
-            time.sleep(5) # let time to trader to stop me
-            sys.exit(4)
+            stop_bot(mybot, status="order refused", exitcode=4)
         mybot.set_current_instruction_wait_order(waited_order_id)
         update_blueprint(mybot)
     else:
@@ -108,6 +109,7 @@ while (True):
     mybot.set_order_filled(waited_order_id)
 
     archive_instruction(mybot)
-    mybot.next_instruction()
+    if (mybot.next_instruction() is None):
+        stop_bot(mybot, status="ended")
     update_blueprint(mybot)
 

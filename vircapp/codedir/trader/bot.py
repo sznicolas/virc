@@ -25,6 +25,7 @@ class SimpleBot(object):
             "pid": self.pid,
             "uid": self.uid,
             "type": "simple",
+            "status": self.status,
             "pair": self.pair,
             "cambista_link": self.cambista_link,
             "cambista_title": self.cambista_title,
@@ -49,6 +50,7 @@ class SimpleBot(object):
                 self.instructions_index = 0
             else:
                 return None
+        self.instructions[self.instructions_index].set_status(None)
         return self.get_current_instruction()
 
     def set_current_instruction_wait_order(self, order_id):
@@ -83,7 +85,7 @@ class Instruction(object):
         self.pair = instruction['pair']
         self.wait_filled = instruction.get('wait_filled')
         self.start_date = instruction.get("start_date")
-        self.status = instruction.get('status') # "wait_filled"|"cancelled"|None
+        self.status = instruction.get('status') # "wait_filled"|"cancelled"|"filled"|None
 
     def to_dict(self):
         if self.start_date:
@@ -104,8 +106,11 @@ class Instruction(object):
         self.wait_filled = order_id
 
     def set_order_filled(self,order_id):
-        self.status = None
+        self.status = "filled"
         self.wait_filled = None
+
+    def set_status(self, status):
+        self.status = status
 
     def cancel(self):
         self.status = "cancelled"
