@@ -42,7 +42,6 @@ def check_bots():
     
 def stop_bot(uid):
     proc = running_bots[uid]    
-    utils.flash("Stopping bot '%s'" % uid, "danger")
     logging.warning("os.kill(" + str(proc.pid) + ", signal.SIGTERM)")
     os.kill(proc.pid, signal.SIGTERM)
     proc.wait()
@@ -75,7 +74,6 @@ while True:
             rds.set("trader:startbot:" + new_bot_uid, json.dumps(recv))
             res = subprocess.Popen(["./simplebot.py", new_bot_uid])
             running_bots[new_bot_uid] = res
-            utils.flash("Spawning %s ..." % new_bot_uid, "success")
 
     recmsg = rds.brpop("trader:action", waittime)
     if (recmsg):

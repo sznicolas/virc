@@ -17,16 +17,17 @@ def on_sigterm(signum, frame):
     logging.info("received SIGTERM, will cancel orders and halt.")
     if (mybot.get_status() == "running") :
         mybot.end("cancelled")
-    stop_bot(mybot, cancel_orders=True)
+    stop_bot(mybot, bcancel_orders=True, alert_trader=False)
 
-def stop_bot(bot, cancel_orders=False, status=None, exitcode=0, alert_trader=True):
-    if (cancel_orders):
-        cancel_orders(mybot)
+def stop_bot(bot, bcancel_orders=False, status=None, exitcode=0, alert_trader=True):
+    if (bcancel_orders):
+        cancel_orders(bot)
     if (status):
-        mybot.end(status=status) 
+        bot.end(status=status) 
     if (alert_trader):
-        rds.lpush("trader:action", json.dumps({'uid': mybot.uid, "type": "stop_bot"}))
+        rds.lpush("trader:action", json.dumps({'uid': bot.uid, "type": "stop_bot"}))
     update_blueprint(mybot)
+    utils.flash("bot '{}' is stopping. Status: {}".format(mybot.name, mybot.status), "info", sync=False)
     sys.exit(exitcode)
 
 def update_blueprint(bot):
@@ -89,7 +90,7 @@ cambista_defs = json.loads(rds.get(mybot.get_cambista_link()))
 rds.delete("trader:startbot:" + uid)
 update_blueprint(mybot)
 
-utils.flash("bot '{}' initialized (uid: {}, PID: {}".format(mybot.name, mybot.uid, mybot.pid), "success", sync=False)
+utils.flash("bot '{}' initialized".format(mybot.name), "success", sync=False)
 
 while (True):
     # could start by waiting if we have a reloaded bot

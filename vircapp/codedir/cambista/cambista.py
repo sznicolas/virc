@@ -109,7 +109,6 @@ def cb_send_order(order_msg):
     except requests.exceptions.ReadTimeout:
         logging.error("ReadTimeout ! Re-register message '%s'" % order_msg)
         utils.flash("ReadTimeout ! Re-register message '%s'" % json.dumps(order_msg), "danger", sync=False)
-        print "ReadTimeout ! Re-register message '%s'" % order_msg
         if ("send_retries" in order_msg.keys()):
             order_msg['send_retries'] += 1
         else:
