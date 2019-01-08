@@ -56,6 +56,9 @@
 
 <script type="text/javascript" src="{{ url_for('static', filename='utils.js') }}"></script>
 <script>
+if (typeof(vircpubsse) !== "undefined") {
+       vircpubsse.close();
+}  
 if (typeof(flashsse) !== "undefined") {
        flashsse.close();
 }  
@@ -64,6 +67,8 @@ if (typeof(tickersse) !== "undefined") {
 }  
 var tickersse = new EventSource("{{ url_for('sse.stream', channel='cb:mkt:tick:pubsub') }}");
 var flashsse = new EventSource("{{ url_for('sse.stream', channel='gui:flash') }}"); 
+var vircpubsse = new EventSource("{{ url_for('sse.stream', channel='virc:pubsub') }}"); 
+vircpubsse.addEventListener('message', messagehandler) ;
 flashsse.addEventListener('success', flashhandler) ;
 flashsse.addEventListener('info', flashhandler) ;
 flashsse.addEventListener('danger', flashhandler) ;

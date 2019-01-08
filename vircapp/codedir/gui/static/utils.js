@@ -1,24 +1,20 @@
 
 // sse alerts
-/*if (typeof(flashsse) !== "undefined") {
-       flashsse.close();
-}  
-if (typeof(tickersse) !== "undefined") {
-       tickersse.close();
-}  
-var tickersse = new EventSource("{{ url_for('sse.stream', channel='cb:mkt:tick:pubsub') }}");
-var flashsse = new EventSource("{{ url_for('sse.stream', channel='gui:flash') }}"); 
-flashsse.addEventListener('success', flashhandler) ;
-flashsse.addEventListener('info', flashhandler) ;
-flashsse.addEventListener('danger', flashhandler) ;
-tickersse.addEventListener('update', tickerhandler) ;
-*/
 function flashhandler(event) {
 	html = "<div class='alert alert-" + event.type +
 		" alert-dismissible' role='alert' data-dismiss='alert' data-toggle='tooltip' title='Click to close'>" +
 		event.data + "</div>";
 	$(html).prependTo('#flash');
 }
+
+function messagehandler(event) {
+	 var obj = JSON.parse(event.data);
+	html = "<div class='alert alert-" + obj.level +
+		" alert-dismissible' role='alert' data-dismiss='alert' data-toggle='tooltip' title='Click to close'>" +
+		obj.message + "</div>";
+	$(html).prependTo('#flash');
+}
+
 function tickerhandler(event) {
 	data = JSON.parse(event.data);
 
@@ -46,9 +42,11 @@ function tickerhandler(event) {
 	$(pticker).fadeIn("fast")
 	setTimeout(function() { $(pticker).css(nstyle) ; }, 2000);
 }
+
 $(window).on('beforeunload', function(){
    		flashsse.close();
 		tickersse.close();
+		vircpubsse.close();
 });
 
 // Confirm with 'confirmation' class

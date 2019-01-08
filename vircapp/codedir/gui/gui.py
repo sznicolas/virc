@@ -63,20 +63,17 @@ def bots():
         newbots.append(json.loads(b))
     for b in rds.lrange("trader:build", 0, -1):
         newbots.append(json.loads(b))
-    for k, b in rds.hscan_iter("trader:rb"):
-        bots.append(json.loads(b))
+    for k in rds.scan_iter(match = "trader:rb:*"):
+        bots.append(json.loads(rds.get(k)))
     return render_template("bots.html", bots=bots, newbots=newbots)
 
 @app.route("/bot/<uid>")
 def bot(uid):
-    res = rds.hget("trader:rb",  uid)
+    res = rds.get("trader:rb:" + uid)
     if res is None:
         return render_template("404.html", title="<h1>Bot {} was not found</h1>".format(uid)), 404
     bot = json.loads(res)
-    ihist=[]
-    for h in rds.lrange("trader:hist:" + uid, 0, -1):
-        ihist.append(json.loads(h))
-    return render_template("bot.html", bot=bot, instructions_history=ihist)
+    return render_template("bot.html", bot=bot)
 
 @app.route("/bot_stop/<uid>", methods=["GET"])
 def bot_stop(uid):
@@ -95,7 +92,7 @@ def bot_new_simple():
     form.cambista.choices = []
     for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
         cambista_info = json.loads(rds.get(k))
-        form.cambista.choices.append((k, "{} ({})".format(cambista_info['platform'], cambista_info['role'])))
+        form.cambista.choices.append((k, "{} ({})".format(cambista_info['cambista_name'], cambista_info['role'])))
     if form.validate_on_submit():
         instruction1 = { 
                 "side": "buy", "price": float(form.buy_at.data),
@@ -149,8 +146,8 @@ def redis_ls():
         elif (k.startswith("cb:mkt:tick")):
             tickers.append({'name': k, 'pair': k.split(":")[-1], "price": rds.get(k)})
         elif k.startswith("trader:rb"):
-            for k, v in rds.hscan_iter("trader:rb"):
-                traderrb[k] = json.dumps(json.loads(v), sort_keys = True, indent = 4, separators = (',', ': '))
+            bot = json.loads(rds.get(k))
+            traderrb[bot['uid']] = json.dumps(bot, sort_keys = True, indent = 4, separators = (',', ': '))
         elif (k == "cambisim:orderbook"):
             orderbook_sim = json.loads(rds.get(k))
         # Other messages

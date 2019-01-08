@@ -16,35 +16,37 @@ def on_sigterm(signum, frame):
     """ trader.py sends SIGTERM to stop the bot then wait() """
     logging.info("received SIGTERM, will cancel orders and halt.")
     if (mybot.get_status() == "running") :
-        mybot.end("cancelled")
+        mybot.end("canceled")
     stop_bot(mybot, bcancel_orders=True, alert_trader=False)
 
 def stop_bot(bot, bcancel_orders=False, status=None, exitcode=0, alert_trader=True):
     if (bcancel_orders):
-        cancel_orders(bot)
+        cancel_order(bot)
     if (status):
         bot.end(status=status) 
     if (alert_trader):
+        # error on server side if it's in brpop
         rds.lpush("trader:action", json.dumps({'uid': bot.uid, "type": "stop_bot"}))
-    update_blueprint(mybot)
-    utils.flash("bot '{}' is stopping. Status: {}".format(mybot.name, mybot.status), "info", sync=False)
+    update_blueprint(bot)
+    utils.flash("bot '{}' is stopping. Status: {}".format(bot.name, bot.status), "info", sync=False)
     sys.exit(exitcode)
 
 def update_blueprint(bot):
     if ( bot.get_status() == "running"):
-        channel = rbs
+        channel = rbs + ":" + bot.uid
     else:
-        channel = hbs
-    rds.hdel(channel, bot.uid)
-    rds.hset(channel, bot.uid, json.dumps(bot.to_dict()))
-    print "Bot updated, see ", channel
+        channel = hbs + ":" + bot.uid
+        rds.delete(rbs + ":" + bot.uid)
+    rds.delete(channel)
+    rds.set(channel, json.dumps(bot.to_dict()))
+    print "Bot '%s' updated, see %s" % (bot.name, channel)
 
 def send_order(bot):
     res = rds.lpush(cambista_defs['channels']['in'], json.dumps(bot.get_current_instruction()))
     # wait order_id
-    msg = rds.brpop(cambista_defs['channels']['new_order'] + bot.uid)[1]
-    logging.info("Received:" + msg)
-    msg = json.loads(msg)
+    msg = rds.brpop(cambista_defs['channels']['new_order'] + bot.uid)
+    logging.info("Received:" + str(msg))
+    msg = json.loads(msg[1])
     if ( msg['type'] == "refused"):
         logging.info("Bot {} ({}): Order refused. Reason: {}".format(bot.name, bot.uid[:8], msg))
         utils.flash("Bot '{}': Order refused. Reason: {}".format(bot.name, msg), "danger", sync=False)
@@ -52,25 +54,15 @@ def send_order(bot):
     order_id = msg['order_id']
     return order_id
 
-def cancel_order(bot, order_id):
-    logging.info("Cancelling " + order_id)
+def cancel_order(bot):
+    logging.info("Cancelling " + bot.current_instruction.get_order_id())
     # send cancel order before the others with rpush
     rds.rpush(cambista_defs['channels']['in'], json.dumps( { 'type': "cancel_order",
-                "order_id": order_id, 'uid': bot.uid } ))
-    rds.brpop(cambista_defs['channels']['cancel_order'] + bot.uid)
+                "order_id": bot.current_instruction.get_order_id(), 'uid': bot.uid } ))
+    rds.brpop(cambista_defs['channels']['cancel_order'] + bot.uid)[1]
+    bot.current_instruction.cancel()
 
 
-def cancel_orders(bot):
-    for i in bot.get_instructions():
-        if (i.status == "wait_filled"):
-            cancel_order(bot, i.get_wait_order_id())
-            i.cancel()
-
-def archive_instruction(bot):
-    hist = bot.get_current_instruction()
-    hist["execution_date"] = datetime.datetime.now().isoformat()
-    rds.lpush("trader:hist:" + bot.uid, json.dumps(hist))
-        
 # -----------------------------------------------
 # -- init --
 signal.signal(signal.SIGTERM, on_sigterm)
@@ -92,25 +84,36 @@ update_blueprint(mybot)
 
 utils.flash("bot '{}' initialized".format(mybot.name), "success", sync=False)
 
-while (True):
-    # could start by waiting if we have a reloaded bot
-    waited_order_id = mybot.get_waited_order_id()
+for instruction in mybot.iter_instructions():
+    # If we have a reloaded bot we've already an order sent
+    waited_order_id = mybot.current_instruction.get_order_id()
     if waited_order_id is None:
         waited_order_id = send_order(mybot)
         if (waited_order_id is None):
             stop_bot(mybot, status="order refused", exitcode=4)
-        mybot.set_current_instruction_wait_order(waited_order_id)
+        mybot.current_instruction.set_order_id(waited_order_id)
         update_blueprint(mybot)
     else:
         logging.info("Reloaded bot, instruction previously sent")
 
     logging.info("Waiting for order %s execution..." % waited_order_id)
-    rds.brpop(cambista_defs['channels']['order_filled'] + waited_order_id)
-    logging.info("Order %s is filled." % waited_order_id)
-    mybot.set_order_filled(waited_order_id)
+    msg = rds.brpop(cambista_defs['channels']['order_done'] + waited_order_id)[1]
+    print "Sb:" , msg
+    msg = json.loads(msg)
+    if (msg['reason'] == "canceled"):
+        utils.flash("Order canceled by user, exit")
+        stop_bot(mybot, status="order canceled by user")
+        sys.exit(10)
+    elif (msg['reason'] == "filled"):
+        mybot.current_instruction.set_order_filled(waited_order_id)
+    else:
+        utils.flash("Unknown reason, exit")
+        stop_bot(mybot, status="Unknown reason")
+        logging.error("Msg received: '%s'" % (msg))
+        sys.exit(11)
 
-    archive_instruction(mybot)
-    if (mybot.next_instruction() is None):
-        stop_bot(mybot, status="ended")
+    logging.info("Order %s is filled." % (waited_order_id))
     update_blueprint(mybot)
 
+stop_bot(mybot, status="ended")
+update_blueprint(mybot)

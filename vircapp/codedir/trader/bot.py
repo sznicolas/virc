@@ -1,23 +1,27 @@
-import os, datetime
+import os, datetime, copy
 
 class SimpleBot(object):
     def __init__(self, bot):
-        self.instructions = []
         self.name = bot['name']
         self.pid = os.getpid()
         self.uid = bot['uid']
         self.pair = bot['pair']
-        self.cambista_link = bot.get('cambista_link')
+        self.cambista_link  = bot['cambista_link']
         self.cambista_title = bot.get('cambista_title')
+        self.cambista_icon  = bot.get('cambista_icon')
         self.status = "running"
         self.start_date = datetime.datetime.now()
         self.instructions_loop = bot.get('instructions_loop')
         self.instructions_index = bot.get('instructions_index', 0)
         self.instructions_count = bot.get('instructions_count', 0)
+        self.instructions_history = bot.get('instructions_history', [])
+        self.instructions = []
         for instruction in bot['instructions']:
             if not "pair" in instruction:
                 instruction['pair'] = self.pair
             self.instructions.append(Instruction(instruction))
+        self.current_instruction = copy.deepcopy(bot.get('current_instruction', self.instructions[self.instructions_index]))
+        self.current_instruction.set_uid(self.uid)
 
     def to_dict(self):
         return {
@@ -29,11 +33,14 @@ class SimpleBot(object):
             "pair": self.pair,
             "cambista_link": self.cambista_link,
             "cambista_title": self.cambista_title,
+            "cambista_icon": self.cambista_icon,
             "start_date": self.start_date.isoformat(),
             "instructions_loop": self.instructions_loop,
             "instructions_index": self.instructions_index,
             "instructions_count": self.instructions_count,
-            "instructions": [ i.to_dict() for i in self.instructions ]
+            "instructions": [ i.to_dict() for i in self.instructions ],
+            "instructions_history": [ i.to_dict() for i in self.instructions_history ],
+            "current_instruction": self.current_instruction.to_dict()
             }
 
     def get_status(self):
@@ -42,39 +49,28 @@ class SimpleBot(object):
     def get_cambista_link(self):
         return self.cambista_link
 
-    def next_instruction(self):
-        self.instructions_index += 1
-        self.instructions_count += 1
-        if (self.instructions_index >= len(self.instructions)):
-            if (self.instructions_loop):
-                self.instructions_index = 0
-            else:
-                return None
-        self.instructions[self.instructions_index].set_status(None)
-        return self.get_current_instruction()
+    def iter_instructions(self):
+        while (self.instructions_index < len(self.instructions)):
+            yield self.current_instruction
+            self.instructions_history.append(self.current_instruction)
+            self.instructions_index += 1
+            self.instructions_count += 1
+            if (self.instructions_index >= len(self.instructions)):
+                if (self.instructions_loop is True):
+                    self.instructions_index = 0
+                else:
+                    raise StopIteration
+            self.current_instruction = copy.deepcopy(self.instructions[self.instructions_index])
+            self.current_instruction.set_uid(self.uid)
 
-    def set_current_instruction_wait_order(self, order_id):
-        self.instructions[self.instructions_index].set_wait_order_id(order_id)    
-    
     def get_current_instruction(self):
-        instructions =  self.instructions[self.instructions_index].to_dict()    
-        instructions['uid'] = self.uid
-        return instructions
-    
-    def get_instructions(self):
-        return iter(self.instructions)
-
-    def get_waited_order_id(self):
-        return self.instructions[self.instructions_index].wait_filled
-
-    def set_order_filled(self, order_id):
-        self.instructions[self.instructions_index].set_order_filled(order_id)
+        return self.current_instruction.to_dict()    
 
     def end(self, status="ended"):
         self.status = status
 
     def __repr__(self):
-        return "Bot '{}': ({})".format(str(self.name, self.to_dict()))
+        return "Bot '{}': ({})".format(self.name, str(self.to_dict()))
 
 class Instruction(object):
     def __init__(self, instruction):
@@ -83,37 +79,50 @@ class Instruction(object):
         self.price = instruction['price']
         self.type = instruction['type']
         self.pair = instruction['pair']
+        self.uid  = instruction.get('uid')
         self.wait_filled = instruction.get('wait_filled')
         self.start_date = instruction.get("start_date")
-        self.status = instruction.get('status') # "wait_filled"|"cancelled"|"filled"|None
+        self.filled_date = instruction.get("filled_date")
+        self.cancel_date = instruction.get("cancel_date")
+        self.status = instruction.get('status') # "wait_filled"|"canceled" <= with one 'l' !!! |"filled"|None
 
     def to_dict(self):
-        if self.start_date:
-            start_date = self.start_date.isoformat()
-        else:
-            start_date = None
-        return { "size": self.size, "side": self.side,
-                "price": self.price, "type": self.type,
-                "pair": self.pair, "wait_filled": self.wait_filled,
-                "start_date": start_date, "status": self.status}
+        return { "size": self.size,  "side"  : self.side,
+                "price": self.price, "type"  : self.type,
+                "pair" : self.pair,  "status": self.status,
+                "uid"  : self.uid,
+                "wait_filled": self.wait_filled,
+                "start_date" : self._idate(self.start_date),
+                "filled_date": self._idate(self.filled_date),
+                "cancel_date": self._idate(self.cancel_date)
+                }
 
-    def get_wait_order_id(self):
+    def _idate(self, d):
+        """ transforms date to isoformat or None if date is not set """
+        if d:
+            return d.isoformat()
+        else:
+            return None
+
+    def get_order_id(self):
         return self.wait_filled
 
-    def set_wait_order_id(self,order_id):
+    def set_uid(self, uid):
+        self.uid = uid
+
+    def set_order_id(self,order_id):
         self.start_date = datetime.datetime.now()
         self.status = "wait_filled"
         self.wait_filled = order_id
 
     def set_order_filled(self,order_id):
+        self.filled_date = datetime.datetime.now()
         self.status = "filled"
         self.wait_filled = None
 
-    def set_status(self, status):
-        self.status = status
-
     def cancel(self):
-        self.status = "cancelled"
+        self.cancel_date = datetime.datetime.now()
+        self.status = "canceled"
 
     def __repr__(self):
         return "Instruction ({})".format(str(self.to_dict()))

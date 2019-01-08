@@ -21,8 +21,10 @@ def redis_connect():
         raise 
     return rds
 
+
 def flash(message, level="info", sync=True):
     """ send message to flask in sync mode, or to sse """
+    """ the old one, to be removed"""
 #    print "utils.flash. type: {} - content: {}".format(type(message), message)
     fmessage = json.dumps( {
         "type": level,
@@ -32,6 +34,17 @@ def flash(message, level="info", sync=True):
     else:
         rds.publish("gui:flash", fmessage)
 #    print "utils.flash. fmessage type: {} - content: {}".format(type(fmessage), fmessage)
+
+def virc_publish(message, category, level='info'):
+    """ send message to flask in sync mode, or to sse """
+    fmessage = json.dumps( {
+        "type": "message",
+        "data": {
+            'message': message,
+            'category': category,
+            'level': level }
+        } )
+    rds.publish("virc:pubsub", fmessage)
 
 class Pairs():
     """ pairs exchanged we want to get are defined in docker-compose.yml 

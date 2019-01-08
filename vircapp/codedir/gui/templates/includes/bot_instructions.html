@@ -4,14 +4,16 @@
 		<h2>{{ title }}</h2>
 		{% for instruction in instructions %}
 			<div class="container-fluid {{ 'active_instruction' if instruction['wait_filled'] else 'instruction' }}">
+				{% if instruction['start_date'] %}
 				<div class="row">
 					<div class="col-sm-3">start_date:</div>
-					<div class="col-sm-9">{{ instruction['start_date'][:-7] if instruction['start_date'] else "-" }}</div>
+					<div class="col-sm-9">{{ instruction['start_date'][:-7] }}</div>
 				</div>
+				{% endif %}
 				{% if title == "History" %}
 					<div class="row">
 						<div class="col-sm-3">execution_date:</div>
-						<div class="col-sm-9">{{ instruction['execution_date'][:-7] if instruction['execution_date'] else "-" }}</div>
+						<div class="col-sm-9">{{ instruction['filled_date'][:-7] if instruction['filled_date'] else "-" }}</div>
 					</div>
 				{% endif %}
 				<div class="row">

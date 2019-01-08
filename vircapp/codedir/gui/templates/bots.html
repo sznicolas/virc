@@ -24,21 +24,22 @@
 	    <h1>Bots</h1>
 		<div class="row">
 			<div class="col-sm-10">
-				<table class="table table-striped container">
-						<tr><th>Name</th><th>Type</th><th>Loop?</th><th>Instr.<br />count</th><th>Current instruction</th><th>Actions</th></tr>
+				<table class="table table-striped container bots_table">
+						<tr><th>Name</th><th>Start date</th><th>Type</th><th>Loop?</th><th>Instr.<br />count</th><th>Current instruction</th><th>Actions</th></tr>
 				{% for bot in bots %}
 					<tr>
 							<th>
 									<span class="glyphicon {{ 'glyphicon-briefcase' if 'real' in bot['cambista_title'] else 'glyphicon-wrench' }}" data-toggle="tooltip" title="{{ bot['cambista_title'] }}"></span>
 									<a href="/bot/{{ bot['uid'] }}">{{ bot['name'] }}</a>
 							</th>
+						<td>{{ bot['start_date'] }}</td>
 						<td>{{ bot['type'] }}</td>
 						<td>
 							<span class="glyphicon {{ 'glyphicon-repeat' if bot['instructions_loop'] else 'glyphicon-th-list' }}" data-toggle="tooltip" title="{{ 'Loop' if bot['instructions_loop'] else 'One shot' }}"></span>
 						</td>
 						<td>{{ bot['instructions_count'] }}</td>
 						{% with ci = bot['instructions'][bot['instructions_index']] %}
-						<td>{{ ci['status'] }}:<br />{{ "{} {} {} @ {}{}/{}".format(ci['side'], ci['size'], ci['pair'][:3], ci['price'], ci['pair'][4:], ci['pair'][:3]) }} </td>
+						<td>{{ "{} {} {} @ {}{}/{}".format(ci['side'], ci['size'], ci['pair'][:3], ci['price'], ci['pair'][4:], ci['pair'][:3]) }} </td>
 						{% endwith %}
 							<td><a href="{{ url_for("bot_stop", uid=bot['uid']) }}" role="button" class="btn btn-danger btn-sm confirmation">
           						<span class="glyphicon glyphicon-remove"></span>Stop
@@ -46,9 +47,37 @@
 							</td>
 					</tr>
 				{% endfor %}
+					<tr class="hidden" id="tpl_bot_row">
+							<th>
+									<span class="glyphicon" data-toggle="tooltip" title=""></span>
+									<a href="#"></a>
+							</th>
+						<td class="tpl-bot-type"></td>
+						<td class="tpl-bot-loop">
+							<span class="glyphicon" data-toggle="tooltip" title=""></span>
+						</td>
+						<td class="tpl-bot-inst-count"></td>
+						<td class="tpl-bot-inst-detail"></td>
+						<td class="tpl-bot-stop"><a href="" role="button" class="btn btn-danger btn-sm confirmation">
+          					<span class="glyphicon glyphicon-remove"></span>Stop
+        					</a>
+						</td>
+					</tr>
+					<tr class="hidden"><td>Only for keeping stripes order</td></tr>
 				</table>
 			</div>
 		</div>
 	{% endif %}
 </div>
 {% endblock content %}
+{% block scripts %}
+{{super()}}
+<script charset="utf-8" type="text/javascript">
+function update_bots_table() {
+	var botrow = $('#tpl_bot_row').clone();
+	botrow.removeClass('hidden');
+	botrow.appendTo(".bots_table");
+}
+//update_bots_table();
+</script>
+{% endblock %}

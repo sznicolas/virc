@@ -39,6 +39,7 @@ looptime = int(os.environ.get('analyst_refresh', 2))
 lperiods = [ 24 * 60,
              6 * 60,
              60,
+             30,
              15 ,
              5,  
              1 ]

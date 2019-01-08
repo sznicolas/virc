@@ -10,16 +10,16 @@ pairs = os.environ['pairs'].split()
 cb_rw_keys = "coinbase-rw.json"
 cb_ro_keys = "coinbase.json"
 # conf
-c_camb = os.environ.get("cambista_base_channel")
+cambista_channel = os.environ.get("cambista_base_channel")
 c_tobot = "trader:tobot"
-channels = {'in'            : c_camb + ":orders",
-            'error'         : c_camb + ":error",
-            'order_filled'  : c_tobot   + ":order_filled:",
+channels = {'in'            : cambista_channel + ":orders",
+            'error'         : cambista_channel + ":error",
+            'order_done'    : c_tobot   + ":order_done:",
             'new_order'     : c_tobot   + ":new_order:",
             'cancel_order'  : c_tobot   + ":cancel_order:"
             }
 cambista_role = "real"
-cambista_platform = "Coinbase Pro"
+cambista_name = "Coinbase Pro"
 
 def rw_auth():
     creds_rw = json.loads(open(cb_rw_keys).read())
@@ -43,6 +43,7 @@ class myWebsocketClient(cbpro.WebsocketClient):
     def on_message(self, msg):
         self.message_count += 1
         logging.info("ws received:" + str(msg))
+        msg = signmsg(msg)
         if ( msg['type'] == "error"):
             print "Error: ", msg
             logging.error(msg)
@@ -50,11 +51,11 @@ class myWebsocketClient(cbpro.WebsocketClient):
         elif ( msg["type"] == "subscriptions" ):
             logging.info("Subscriptions : " + str(msg))
             return
-        elif (msg['type'] == "done" and msg['reason'] == "filled"):
+        elif msg['type'] == "done":
             print msg
-            rds.lpush(channels["order_filled"] + msg['order_id'], json.dumps(msg))
-            logging.info("Filled: " + msg['order_id'])
-            utils.flash("Order '%s' filled" % msg['order_id'], "info", sync=False)
+            rds.lpush(channels["order_done"] + msg['order_id'], json.dumps(msg))
+            logging.info("Order done. Reason: {} order_id: {}".format(msg['reason'], msg['order_id']))
+            utils.flash("Order done. Reason: {} order_id: {}".format(msg['reason'], msg['order_id']), "info", sync=False)
         if (not  msg["type"] in self.encountered_types ):
             print (json.dumps(msg, indent=4, sort_keys=True))
             self.encountered_types.append(msg["type"])
@@ -84,7 +85,7 @@ def cb_sell(msg):
 
 def cb_cancel_order(order_id):
     recv = auth_client.cancel_order(order_id)
-    return { 'type': 'order_cancelled', 'id': recv[0]}
+    return { 'type': 'order_canceled', 'id': recv[0]}
 
 def cb_send_order(order_msg):
     """ sends the order to cb's API, with retries. If unreachable, republish the received message to itself """
@@ -107,6 +108,7 @@ def cb_send_order(order_msg):
         else:
           logging.warning("Message type unknown in " + str(recv))
     except requests.exceptions.ReadTimeout:
+        order_msg = signmsg(order_msg)
         logging.error("ReadTimeout ! Re-register message '%s'" % order_msg)
         utils.flash("ReadTimeout ! Re-register message '%s'" % json.dumps(order_msg), "danger", sync=False)
         if ("send_retries" in order_msg.keys()):
@@ -116,6 +118,7 @@ def cb_send_order(order_msg):
         rds.lpush(channels['in'], json.dumps(order_msg))
         return 
 
+    recv = signmsg(recv)
     # if order is refused:
     if ("message" in recv.keys()):
         recv["type"] = "refused"
@@ -127,6 +130,11 @@ def cb_send_order(order_msg):
     rds.lpush(channel, json.dumps(recv))
     logging.info("pushed '{}' to '{}'".format(recv, channel))
 
+
+def signmsg(msg):
+    msg['cambista_name'] = cambista_name
+    msg['cambista_channel'] = cambista_channel
+    return msg
 
 # -----------------------------------------------
 # -- init --
@@ -156,8 +164,8 @@ while (True):
         wsClient.ws.ping("keepalive")
 
     # declare myself as running
-    regkey = os.environ.get("CAMBISTA_CHANNELS") + c_camb
-    rds.set(regkey, json.dumps({"role": cambista_role, "platform": cambista_platform, "channels": channels}))
+    regkey = os.environ.get("CAMBISTA_CHANNELS") + cambista_channel
+    rds.set(regkey, json.dumps({"role": cambista_role, "cambista_name": cambista_name, "channels": channels}))
     rds.expire(regkey, 60)
 
     # get new message
@@ -166,10 +174,11 @@ while (True):
         logging.info("Cambista received: %s" % str(rdsmsg))
         try:
             order_msg = json.loads(rdsmsg[1])
+            order_msg = signmsg(order_msg)
             # pre check data
             order_msg['uid'], order_msg['type']
         except:
-            logging.error("Message is not well formatted. Pushed to " + camb_channel + ":error")
+            logging.error("Message is not well formatted. Pushed to " + cambista_channel + ":error")
             rds.lpush(channels['error'], str(rdsmsg))
             continue
         cb_send_order(order_msg)

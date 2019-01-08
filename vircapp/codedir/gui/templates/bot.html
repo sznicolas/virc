@@ -30,7 +30,10 @@
 	{% with instructions = bot['instructions'] , title = "Instructions" %}
 	{% include 'includes/bot_instructions.html' %}
 	{% endwith %}
-	{% with instructions = instructions_history, title = "History" %}
+	{% with instructions = [bot['current_instruction']] , title = "Current instruction" %}
+	{% include 'includes/bot_instructions.html' %}
+	{% endwith %}
+	{% with instructions = bot['instructions_history'], title = "History" %}
 	{% include 'includes/bot_instructions.html' %}
 	{% endwith %}
 </div>
