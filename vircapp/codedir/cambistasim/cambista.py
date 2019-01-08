@@ -103,6 +103,10 @@ while (True):
             continue
         if (order_msg['type'] == "order"):
             if ( order_msg['side'] == "buy"):
+                if (order_msg['size'] * order_msg['price'] > 10000):
+                    rds.lpush(channels['new_order'] + order_msg['uid'],
+                            json.dumps({"message": "Insufficient funds", "type": "refused"}))
+                    continue
                 order_id = orderbook.buy(order_msg)
             elif ( order_msg['side'] == 'sell'):
                 order_id = orderbook.sell(order_msg)
