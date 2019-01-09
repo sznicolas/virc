@@ -2,8 +2,6 @@
 body {
 	background: #fafafa;
 	color: #333333;
-	margin-top: 5rem;
-	margin-left: 5rem;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -19,11 +17,16 @@ h1, h2, h3, h4, h5, h6 {
    background-color: #f4f4ff;
 }
 
+.table-condensed{
+  font-size: 12px;
+}
+
 .bg-steel {
     background-color: #5f788a;
 }
 .navbar-brand {
 		color: #ccd6dc;
+		padding-left: 10px;
 }
 .navbar-nav .nav-link, .navbar-toggle, .icon-bar{
 	color: #cbd5db;
@@ -38,21 +41,30 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 
-.ticker-bar {
+#ticker-panel {
 	position: fixed;
 	z-index: 1;
 	right: 0;
 	color: #dbe5eb;
 	background-color: #5f788a;
 	box-shadow: 1px 1px 3px gray;
+	margin: 0px;
+	padding: 0px;
 }
-	
+
+.ticker-panel-mini {
+	max-width: 200px;
+}
+
+.ticker-panel-open {
+	width: 500px;
+}
+
 .ticker {
 	background-color: #2f485a;
   	font-size: 80%;
-	padding-right: 5 !important; 
-	padding-left: 20 !important; 
-	font-weight: bold;
+	padding: 2px 5px 2px 5px; 
+	max-width: 200px;
 }
 
 .bot-elements {
@@ -60,7 +72,7 @@ h1, h2, h3, h4, h5, h6 {
 	box-shadow: 1px 1px 5px #5f788a;
 	padding: 10px;
 	margin: 3px;
-	max-width: 600px !important;
+	/* max-width: 600px !important; */
 }
 
 .bot-elements > h2 {

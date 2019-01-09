@@ -1,14 +1,30 @@
-<div class="panel panel-default ticker-bar">
-	<ul id="tickers" class="list-group">
-	{% for ticker in panel_tickers %}
-		<li class='ticker list-group-item' id='panel-ticker-{{ ticker.pair }}'>
-			<div class="row">
-					<div class="col-md-5 panel-ticker-pair">{{ ticker.pair }}</div>
-					<div class="col-md-3 panel-ticker-price">{{ticker.price}}</div>
-					<div class="col-md-4 panel-ticker-oc">__ %</div>
-			</div>
-		</li>
-	{% endfor %}
-	</ul>
+<div class="container ticker-panel-mini" id="ticker-panel">
+	<div class="row">
+	<div class="col d-none" id="ticker-details">
+		<div class="text-right" onclick="close_ticker_details()">[close]</div>	
+		<div id="ticker-detail-pair">pair</div>	
+ 		<table class="table table-hover table-sm table-condensed">
+    		<thead>
+					<tr><th>Title</th><th>Low</th><th>High</th><th>Vol.</th><th>Chg</th></tr>
+			</thead>
+    		<tbody id="ticker-detail-tbody">
+ 			</tbody>
+  		</table>
+	</div>
+	<div class="col">
+		<div class="panel panel-default">
+			<ul id="tickers" class="list-group">
+			{% for ticker in panel_tickers %}
+			<li class='ticker list-group-item' id='panel-ticker-{{ ticker.pair }}' onclick="open_ticker_details('{{ ticker.pair }}')">
+					<div class="row">
+							<div class="col-sm-5 panel-ticker-pair">{{ ticker.pair }}</div>
+							<div class="col-sm-3 panel-ticker-price">{{ticker.price}}</div>
+							<div class="col-sm-4 panel-ticker-oc">__ %</div>
+					</div>
+				</li>
+			{% endfor %}
+			</ul>
+		</div>
+	</div>
+	</div>
 </div>
-
