@@ -4,7 +4,7 @@ RUN apt-get update && \
 	echo $TZ > /etc/timezone     && \
 	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-websocket python-pip tzdata vim && \
         apt-get clean all && \
-	pip install --no-cache-dir redis hiredis python-dateutil pymongo flask-sse gunicorn gevent flask-wtf Flask-Bootstrap
+	pip install --no-cache-dir redis hiredis python-dateutil pymongo flask-sse gunicorn gevent flask-wtf Flask-Bootstrap4
 
 COPY codedir/gui /code/
 COPY codedir/common /code/

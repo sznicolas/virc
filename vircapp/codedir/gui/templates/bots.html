@@ -47,7 +47,7 @@
 							</td>
 					</tr>
 				{% endfor %}
-					<tr class="hidden" id="tpl_bot_row">
+					<tr class="d-none" id="tpl_bot_row">
 							<th>
 									<span class="glyphicon" data-toggle="tooltip" title=""></span>
 									<a href="#"></a>
@@ -63,7 +63,7 @@
         					</a>
 						</td>
 					</tr>
-					<tr class="hidden"><td>Only for keeping stripes order</td></tr>
+					<tr class="d-none"><td>Only for keeping stripes order</td></tr>
 				</table>
 			</div>
 		</div>
@@ -75,7 +75,7 @@
 <script charset="utf-8" type="text/javascript">
 function update_bots_table() {
 	var botrow = $('#tpl_bot_row').clone();
-	botrow.removeClass('hidden');
+	botrow.removeClass('d-none');
 	botrow.appendTo(".bots_table");
 }
 //update_bots_table();

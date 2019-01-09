@@ -18,6 +18,7 @@ Bootstrap(app)
 secret_key = os.environ.get('FLASK_SECRET_KEY') or '3a9b9c9e9f432478'
 app.config['SECRET_KEY'] = secret_key
 app.config['REDIS_URL'] = "redis://redis"
+app.config['BOOTSTRAP_SERVE_LOCAL'] = True
 app.register_blueprint(sse, url_prefix='/stream')
 
 # send data to the ticker panel

@@ -1,35 +1,26 @@
 {% extends "bootstrap/base.html" %}
 {% block styles %}
 {{super()}}
-<link rel="stylesheet"
-      href="{{url_for('.static', filename='main.css')}}">
+<link rel="stylesheet" href="{{url_for('.static', filename='main.css')}}">
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
 {% endblock %}
 
 {% block title %}Virc{% endblock %}
 {% block navbar %}
-	<nav class="navbar-nav navbar-fixed-top bg-steel">
-		<div class="container">
+	<nav class="navbar-nav navbar-expand-sm navbar-fixed-top bg-steel">
  			<a class="navbar-brand" href="/">Virc</a>
-			<button class="navbar-toggle" data-toggle="collapse" data-target=".virc-menu">
-					 <i class="glyphicon glyphicon-menu-hamburger"></i>
-			</button>
-			<div class="collapse navbar-collapse virc-menu">
-				<ul class="nav navbar-nav">
-					<li><a class="nav-item nav-link" href="{{ url_for('bots') }}">bots</a></li>
-					<li><a class="nav-item nav-link" href="{{ url_for('trade_status') }}">trade status</a></li>
-					<li class="dropdown">
-						<a class="dropdown-toggle glyphicon glyphicon-wrench nav-link" data-toggle="dropdown" href="#">
+				<ul class="navbar-nav">
+					<li class="nav-item"><a class="nav-link" href="{{ url_for('bots') }}">bots</a></li>
+					<li class="nav-item"><a class="nav-link" href="{{ url_for('trade_status') }}">trade status</a></li>
+					<li class="nav-item dropdown">
+						<a class="dropdown-toggle fas fa-cog nav-link" data-toggle="dropdown" href="#">
 								<span class="caret"></span>
 						</a>
-						<ul class="dropdown-menu">
-							<li>
-								<a class="nav-item nav-link" href="{{ url_for('redis_ls') }}">list redis</a>
-							</li>
-						</ul>
+						<div class="dropdown-menu">
+							<a class="nav-item nav-link" href="{{ url_for('redis_ls') }}">list redis</a>
+						</div>
 					</li>
 				</ul>
-			</div>
-		</div>
 	</nav>
 	<div class="container">
 		{% with messages = get_flashed_messages(with_categories=true) %}
