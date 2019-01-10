@@ -1,4 +1,6 @@
-var ticker_stats = {} //received by sse tickerhandler(), used in fill_ticker_details()
+var ticker_stats = {}; //received by sse tickerhandler(), used in fill_ticker_details()
+var tickerbg = "#2f485a"; //TODO: automaite get bg color to store it
+
 // sse alerts
 function flashhandler(event) {
 	html = "<div class='alert alert-" + event.type +
@@ -37,10 +39,13 @@ function tickerhandler(event) {
 	$(pticker).fadeOut("slow");
 	$(ptprice).text(data.ticker.price);
 	$(pticker + " .panel-ticker-oc").text(Number((data.ticker.oc).toFixed(2)) + "%"); 
-	if ( data.ticker.oc >= 0){
+	if ( data.ticker.oc > 0){
 		$(ptoc).css("color", "lawnGreen");
-	} else {
+		//$("<i class='fa fa-arrow-up'></i>").appendTo(ptoc) ;
+	} else if (data.ticker.oc < 0) {
 		$(ptoc).css("color", "red");
+		//$("<i class='fa fa-arrow-dowen'></i>").appendTo(ptoc) ;
+		//$(ptoc).addClass("fa fa-arrow-down");
 	}
 	if ($("#ticker-detail-pair").text() == data.ticker.pair){
 		fill_ticker_details(data.ticker.pair);
@@ -59,11 +64,17 @@ function open_ticker_details(pair) {
 
 function fill_ticker_details(pair){
 	var stats = ticker_stats[pair];
+	var bgstyle;
 	$("#ticker-detail-tbody").empty();
 	$("#ticker-detail-pair").text(stats.ticker.pair);
-	for ( k in stats) {
+	for ( k in stats) { 
 		if ( k == "ticker")   { continue; }
-		html = "<tr><th>" + stats[k].title + "</th><td>" + stats[k].low +
+		if (stats[k].oc > 0) {
+				bgstyle = "background-color: darkGreen;";
+		} else if (stats[k].oc < 0) {
+				bgstyle = "background-color: darkRed;";
+		}
+		html = "<tr style='" + bgstyle + "'><th>" + stats[k].title + "</th><td>" + stats[k].low +
 				"</td><td>" + stats[k].high + "</td><td>" + stats[k].volume.toFixed(2) + 
 				"</td><td>" + stats[k].oc.toFixed(2) + "%</td></tr>";
 		$(html).appendTo('#ticker-detail-tbody');

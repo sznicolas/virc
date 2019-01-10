@@ -46,14 +46,17 @@ h1, h2, h3, h4, h5, h6 {
 	z-index: 1;
 	right: 0;
 	color: #dbe5eb;
-	background-color: #5f788a;
-	box-shadow: 1px 1px 3px gray;
 	margin: 0px;
 	padding: 0px;
 }
 
+#ticker-details {
+	background-color: #5f788a;
+	box-shadow: 1px 1px 5px #5f788a;
+}
+
 .ticker-panel-mini {
-	max-width: 200px;
+	max-width: 226px;
 }
 
 .ticker-panel-open {
@@ -62,9 +65,14 @@ h1, h2, h3, h4, h5, h6 {
 
 .ticker {
 	background-color: #2f485a;
-  	font-size: 80%;
 	padding: 2px 5px 2px 5px; 
-	max-width: 200px;
+	box-shadow: 1px 1px 5px #5f788a;
+}
+
+.ticker-elem {
+	margin: 0px;
+	padding: 0px 0px 0px 12px;
+  	font-size: 12px;
 }
 
 .bot-elements {
@@ -72,7 +80,7 @@ h1, h2, h3, h4, h5, h6 {
 	box-shadow: 1px 1px 5px #5f788a;
 	padding: 10px;
 	margin: 3px;
-	/* max-width: 600px !important; */
+	max-width: 600px !important;
 }
 
 .bot-elements > h2 {
