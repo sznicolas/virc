@@ -29,37 +29,37 @@
 				{% for bot in bots %}
 					<tr>
 							<th>
-									<span class="glyphicon {{ 'glyphicon-briefcase' if 'real' in bot['cambista_title'] else 'glyphicon-wrench' }}" data-toggle="tooltip" title="{{ bot['cambista_title'] }}"></span>
+									<span class="fas {{ 'fa-landmark' if 'real' in bot['cambista_title'] else 'fa-cog' }}" data-toggle="tooltip" title="{{ bot['cambista_title'] }}"></span>
 									<a href="/bot/{{ bot['uid'] }}">{{ bot['name'] }}</a>
 							</th>
 						<td>{{ bot['start_date'] }}</td>
 						<td>{{ bot['type'] }}</td>
 						<td>
-							<span class="glyphicon {{ 'glyphicon-repeat' if bot['instructions_loop'] else 'glyphicon-th-list' }}" data-toggle="tooltip" title="{{ 'Loop' if bot['instructions_loop'] else 'One shot' }}"></span>
+							<span class="fas {{ 'fa-redo' if bot['instructions_loop'] else 'fa-tasks' }}" data-toggle="tooltip" title="{{ 'Loop' if bot['instructions_loop'] else 'One shot' }}"></span>
 						</td>
 						<td>{{ bot['instructions_count'] }}</td>
 						{% with ci = bot['instructions'][bot['instructions_index']] %}
 						<td>{{ "{} {} {} @ {}{}/{}".format(ci['side'], ci['size'], ci['pair'][:3], ci['price'], ci['pair'][4:], ci['pair'][:3]) }} </td>
 						{% endwith %}
 							<td><a href="{{ url_for("bot_stop", uid=bot['uid']) }}" role="button" class="btn btn-danger btn-sm confirmation">
-          						<span class="glyphicon glyphicon-remove"></span>Stop
+          						<span class="fas fa-window-close"></span> Stop
         						</a>
 							</td>
 					</tr>
 				{% endfor %}
 					<tr class="d-none" id="tpl_bot_row">
 							<th>
-									<span class="glyphicon" data-toggle="tooltip" title=""></span>
+									<span title=""></span>
 									<a href="#"></a>
 							</th>
 						<td class="tpl-bot-type"></td>
 						<td class="tpl-bot-loop">
-							<span class="glyphicon" data-toggle="tooltip" title=""></span>
+							<span data-toggle="tooltip" title=""></span>
 						</td>
 						<td class="tpl-bot-inst-count"></td>
 						<td class="tpl-bot-inst-detail"></td>
 						<td class="tpl-bot-stop"><a href="" role="button" class="btn btn-danger btn-sm confirmation">
-          					<span class="glyphicon glyphicon-remove"></span>Stop
+          					<span class="ifas fa-window-close"></span>Stop
         					</a>
 						</td>
 					</tr>

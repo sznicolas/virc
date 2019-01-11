@@ -26,26 +26,26 @@ function tickerhandler(event) {
 	pticker = '#panel-ticker-' + data.ticker.pair;
 	ptprice = pticker + " .panel-ticker-price";
 	ptoc    = pticker + " .panel-ticker-oc";
+	ptlc    = pticker + " .panel-ticker-lc"; // last change mvt
 	oldprice = $(ptprice).text();
 	if (oldprice < data.ticker.price) {
 		hgstyle = {"background-color": "darkGreen"};
 		bgcol = "darkGreen";
+		$(ptlc).removeClass('fas fa-arrow-down fa-arrow-up').addClass('fas fa-arrow-up') ;
 	} else {
 		hgstyle = {"background-color": "darkRed"};
 		bgcol = "darkRed";
+		$(ptlc).removeClass('fas fa-arrow-down fa-arrow-up').addClass('fas fa-arrow-down') ;
 	}
 	nstyle = {"background-color": "#2f485a"};
 	$(pticker).css("background-color", bgcol);
 	$(pticker).fadeOut("slow");
 	$(ptprice).text(data.ticker.price);
-	$(pticker + " .panel-ticker-oc").text(Number((data.ticker.oc).toFixed(2)) + "%"); 
+	$(pticker + " .panel-ticker-oc").text(Number((data.ticker.oc).toFixed(2)) + "% "); 
 	if ( data.ticker.oc > 0){
 		$(ptoc).css("color", "lawnGreen");
-		//$("<i class='fa fa-arrow-up'></i>").appendTo(ptoc) ;
 	} else if (data.ticker.oc < 0) {
 		$(ptoc).css("color", "red");
-		//$("<i class='fa fa-arrow-dowen'></i>").appendTo(ptoc) ;
-		//$(ptoc).addClass("fa fa-arrow-down");
 	}
 	if ($("#ticker-detail-pair").text() == data.ticker.pair){
 		fill_ticker_details(data.ticker.pair);
@@ -63,6 +63,10 @@ function open_ticker_details(pair) {
 }
 
 function fill_ticker_details(pair){
+	if (typeof(ticker_stats[pair]) === "undefined") {
+		close_ticker_details() ;
+		return ; 
+	}
 	var stats = ticker_stats[pair];
 	var bgstyle;
 	$("#ticker-detail-tbody").empty();
@@ -74,8 +78,9 @@ function fill_ticker_details(pair){
 		} else if (stats[k].oc < 0) {
 				bgstyle = "background-color: darkRed;";
 		}
-		html = "<tr style='" + bgstyle + "'><th>" + stats[k].title + "</th><td>" + stats[k].low +
-				"</td><td>" + stats[k].high + "</td><td>" + stats[k].volume.toFixed(2) + 
+		html = "<tr style='" + bgstyle + "'><th>" + stats[k].title +
+				"</th><td onclick='fill_buy_low(this)'>" + stats[k].low +
+				"</td><td onclick='fill_sell_high(this)'>" + stats[k].high + "</td><td>" + stats[k].volume.toFixed(2) + 
 				"</td><td>" + stats[k].oc.toFixed(2) + "%</td></tr>";
 		$(html).appendTo('#ticker-detail-tbody');
 	}
@@ -86,6 +91,16 @@ function close_ticker_details(){
 	$("#ticker-panel").addClass("ticker-panel-mini");
 	$("#ticker-details").addClass("d-none");
 	$("#ticker-detail-pair").text("");
+}
+
+function fill_buy_low(obj){
+		$('#f_buy_at').val($(obj).text());
+		$('#f_buy_at').trigger("change");
+}
+
+function fill_sell_high(obj){
+		$('#f_sell_at').val($(obj).text());
+		$('#f_sell_at').trigger("change");
 }
 
 $(window).on('beforeunload', function(){

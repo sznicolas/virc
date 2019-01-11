@@ -4,7 +4,7 @@
 		<div id="ticker-detail-pair">pair</div>	
  		<table class="table table-hover table-sm table-condensed">
     		<thead>
-					<tr><th>Title</th><th>Low</th><th>High</th><th>Vol.</th><th>Chg</th></tr>
+					<tr><th>Title</th><th>Low</th><th>High</th><th>Vol.</th><th>Chg</th><th></th></tr>
 			</thead>
     		<tbody id="ticker-detail-tbody">
  			</tbody>
@@ -18,6 +18,7 @@
 							<td class="panel-ticker-pair ticker-elem">{{ ticker.pair }}</td>
 							<td class="panel-ticker-price ticker-elem">{{ticker.price}}</td>
 							<td class="panel-ticker-oc ticker-elem">__ %</td>
+							<td class="panel-ticker-lc ticker-elem"></td>
 					</tr>
 			{% endfor %}
 				</table>
