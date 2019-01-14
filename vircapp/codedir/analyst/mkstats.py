@@ -36,7 +36,9 @@ looptime = int(os.environ.get('analyst_refresh', 2))
 
 #  TODO: find a better structure for periods
 # hash key exported  will be "m" + 00key to be exportable in javascript and easilly sortable.
-lperiods = {    24 * 60 : "24h",
+lperiods = {    24*60*30: "30d",
+                24*60*7 : "7d",
+                24 * 60 : "24h",
                 6 * 60  : "6h",
                 60      : "1h",
                 30      : "30m",

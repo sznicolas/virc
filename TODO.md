@@ -10,7 +10,9 @@
 ```
 
 ### Trader
-Simplebot doesn't like trapping a SIGTERM when bloqued in brpop 
+#### Verify key error (if stop called twice)
+#### When bot is restarted : verify order status
+#### Simplebot doesn't like trapping a SIGTERM when bloqued in brpop 
 ```
 trader_1       |   File "/usr/local/lib/python2.7/dist-packages/redis/connection.py", line 636, in read_response
 trader_1       |     raise e

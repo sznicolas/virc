@@ -1,6 +1,6 @@
 import time, json, os
 
-from flask import Flask, render_template, redirect, flash, url_for
+from flask import Flask, render_template, redirect, flash, url_for, request
 from flask_bootstrap import Bootstrap
 from flask_sse import sse
 
@@ -28,8 +28,6 @@ panel_tickers = []
 @app.context_processor
 def inject_common_data():
     panel_tickers = []
-    #tick_keys = rds.scan(match="cb:mkt:tick:*"):
-    #for k in rds.scan_iter(match="cb:mkt:tick:*"):
     for k in sorted(rds.scan(match="cb:mkt:tick:*", count=100)[1]):
         pair = k.split(":")[3]
         panel_tickers.append({'name': k, 'pair': k.split(":")[-1], "price": rds.get(k)})
@@ -48,7 +46,6 @@ def root():
     for k in  rds.scan_iter(match="cb:mkt:tick:*"):
       pair = k.split(":")[3]
       tickers[pair] = rds.get(k)
-    print tickers
     return render_template("index.html", tickers=tickers)
 
 @app.errorhandler(404)
@@ -60,13 +57,16 @@ def page_not_found(e):
 def bots():
     newbots = [] 
     bots = [] 
+    histbots=[]
     for b in rds.lrange("trader:startbot", 0, -1):
         newbots.append(json.loads(b))
     for b in rds.lrange("trader:build", 0, -1):
         newbots.append(json.loads(b))
     for k in rds.scan_iter(match = "trader:rb:*"):
         bots.append(json.loads(rds.get(k)))
-    return render_template("bots.html", bots=bots, newbots=newbots)
+    for k in rds.scan_iter(match = "trader:hb:*"):
+        histbots.append(json.loads(rds.get(k)))
+    return render_template("bots/bots.html", bots=bots, newbots=newbots, histbots=histbots)
 
 @app.route("/bot/<uid>")
 def bot(uid):
@@ -74,7 +74,7 @@ def bot(uid):
     if res is None:
         return render_template("404.html", title="<h1>Bot {} was not found</h1>".format(uid)), 404
     bot = json.loads(res)
-    return render_template("bot.html", bot=bot)
+    return render_template("bots/bot.html", bot=bot)
 
 @app.route("/bot_stop/<uid>", methods=["GET"])
 def bot_stop(uid):
@@ -89,12 +89,50 @@ def bots_stopall():
 @app.route("/bot_new_simple", methods=["GET", "POST"])
 def bot_new_simple():
     form = SimpleBot()
+    # TODO: Put this 2 blocks in 2 functions (pair, cambista)
+    form.pair.choices = [(p,p) for p in pairs]
+    form.cambista.choices = []
+    for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
+        cambista_info = json.loads(rds.get(k))
+        form.cambista.choices.append((k, "{} ({})".format(cambista_info['cambista_name'], cambista_info['role'])))
+    return render_template("bots/bot_new_simple.html", form=form)
+
+@app.route("/bot_dup/<uid>", methods=["GET", "POST"])
+def bot_dup(uid):
+    # get bot data
+    bot = json.loads(rds.get("trader:rb:" + uid))
+    # get bot type
+    if (bot['type'] == "simple"):
+        form = SimpleBot()
+        form.cambista.choices = []
+        # TODO: Put pre-fill in Form constructor
+        # TODO: Put this 2 blocks in 2 functions (pair, cambista)
+        form.pair.choices = [(p,p) for p in pairs]
+        for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
+            cambista_info = json.loads(rds.get(k))
+            form.cambista.choices.append((k, "{} ({})".format(cambista_info['cambista_name'], cambista_info['role'])))
+        form.bot_name.data = bot['name']
+        form.pair.data = bot['pair']
+        form.instructions_loop.data = bot['instructions_loop']
+        form.cambista.data = bot['cambista_link']
+        form.size.data = bot["instructions"][0]["size"]
+        form.buy_at.data = bot["instructions"][0]['price'] 
+        form.sell_at.data = bot["instructions"][1]['price'] 
+    else:
+        return("Sorry, type {} not implemented yet.".format(bot['type'])) 
+    return render_template("bots/bot_new_simple.html", form=form)
+
+@app.route("/bot_add", methods=["POST"])
+def bot_add():
+    form = SimpleBot()
+    # TODO: Put this 2 blocks in 2 functions (pair, cambista)
     form.pair.choices = [(p,p) for p in pairs]
     form.cambista.choices = []
     for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
         cambista_info = json.loads(rds.get(k))
         form.cambista.choices.append((k, "{} ({})".format(cambista_info['cambista_name'], cambista_info['role'])))
     if form.validate_on_submit():
+        bot = {}
         instruction1 = { 
                 "side": "buy", "price": float(form.buy_at.data),
                 "size": float(form.size.data), "type": "order" }
@@ -115,13 +153,25 @@ def bot_new_simple():
               }
         rds.lpush("trader:build", str(json.dumps(bot)))
         return redirect(url_for("bots"))
-    return render_template("bot_new_simple.html", form=form)
+    else:
+        #return render_template("bots/bot_new_simple.html", form=form)
+        return render_template("bots/bots.html")
+
+@app.route("/bot_continue/<uid>", methods=["GET", "POST"])
+def bot_continue(uid):
+    try:
+        bot = json.loads(rds.get("trader:hb:" + uid))
+        rds.rename("trader:hb:" + uid, "archive:hb:" + uid)
+    except:
+        return "Bot " + uid + " not found"
+    rds.lpush("trader:build", str(json.dumps(bot)))
+    return render_template("bots/bots.html")
 
 @app.route("/bot_new_stop_loss", methods=["GET", "POST"])
 def bot_new_stop_loss():
     form = StopLossBot()
     form.pair.choices = [(p,p) for p in pairs]
-    return render_template("bot_new_stop_loss.html", form=form)
+    return render_template("bots/bot_new_stop_loss.html", form=form)
 
 # --------- Trade Pages ---------
 @app.route("/trade_status")
@@ -166,5 +216,5 @@ def redis_ls():
 def redis_del(key):
     rds.delete(key)
     utils.flash("deleted '%s'" % key,'danger')
-    return redirect(url_for("redis_ls"))
+    return redirect(request.referrer) #url_for("redis_ls"))
 

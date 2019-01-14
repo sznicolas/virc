@@ -1,4 +1,5 @@
 import os, datetime, copy
+# import dateutil.parser
 
 class SimpleBot(object):
     def __init__(self, bot):
@@ -14,13 +15,18 @@ class SimpleBot(object):
         self.instructions_loop = bot.get('instructions_loop')
         self.instructions_index = bot.get('instructions_index', 0)
         self.instructions_count = bot.get('instructions_count', 0)
-        self.instructions_history = bot.get('instructions_history', [])
+        self.instructions_history = []
+        for instruction in bot['instructions_history']:
+            self.instructions_history.append(Instruction(instruction))
         self.instructions = []
         for instruction in bot['instructions']:
             if not "pair" in instruction:
                 instruction['pair'] = self.pair
             self.instructions.append(Instruction(instruction))
-        self.current_instruction = copy.deepcopy(bot.get('current_instruction', self.instructions[self.instructions_index]))
+        if bot.get('current_instruction'):
+            self.current_instruction = Instruction(bot.get('current_instruction'))
+        else:
+            self.current_instruction = Instructions(copy.deepcopy(self.instructions[self.instructions_index]))
         self.current_instruction.set_uid(self.uid)
 
     def to_dict(self):
@@ -100,7 +106,9 @@ class Instruction(object):
     def _idate(self, d):
         """ transforms date to isoformat or None if date is not set """
         if d:
-            return d.isoformat()
+            if type(d) == 'datetime.datetime':
+                return d.isoformat()
+            return d # probably isoformat 'str' previously modified, in case of a bot reloaded.
         else:
             return None
 

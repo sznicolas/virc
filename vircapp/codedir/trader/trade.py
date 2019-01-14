@@ -42,6 +42,9 @@ def check_bots():
             rds.set("trader:hb:" + uid, json.dumps(rb[uid]))
     
 def stop_bot(uid):
+    if (running_bots.get(uid) is None):
+        logging.error("In stop_bot(%s): uid not found")
+        return
     proc = running_bots[uid]    
     logging.warning("os.kill(" + str(proc.pid) + ", signal.SIGTERM)")
     os.kill(proc.pid, signal.SIGTERM)
