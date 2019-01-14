@@ -43,7 +43,7 @@ def check_bots():
     
 def stop_bot(uid):
     if (running_bots.get(uid) is None):
-        logging.error("In stop_bot(%s): uid not found")
+        logging.error("In stop_bot(%s): uid not found" % uid)
         return
     proc = running_bots[uid]    
     logging.warning("os.kill(" + str(proc.pid) + ", signal.SIGTERM)")
