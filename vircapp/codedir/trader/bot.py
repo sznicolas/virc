@@ -27,7 +27,7 @@ class SimpleBot(object):
         if bot.get('current_instruction'):
             self.current_instruction = Instruction(bot.get('current_instruction'))
         else:
-            self.current_instruction = Instructions(copy.deepcopy(self.instructions[self.instructions_index]))
+            self.current_instruction = Instruction(self.instructions[self.instructions_index])
         self.current_instruction.set_uid(self.uid)
 
     def to_dict(self):
@@ -107,7 +107,7 @@ class Instruction(object):
     def _idate(self, d):
         """ transforms date to isoformat or None if date is not set """
         if d:
-            if type(d) == 'datetime.datetime':
+            if isinstance(d, datetime.datetime):
                 return d.isoformat()
             return d # probably isoformat 'str' previously modified, in case of a bot reloaded.
         else:
