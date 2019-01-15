@@ -16,8 +16,9 @@ class SimpleBot(object):
         self.instructions_index = bot.get('instructions_index', 0)
         self.instructions_count = bot.get('instructions_count', 0)
         self.instructions_history = []
-        for instruction in bot['instructions_history']:
-            self.instructions_history.append(Instruction(instruction))
+        if bot.get("instructions_history"):
+            for instruction in bot['instructions_history']:
+                self.instructions_history.append(Instruction(instruction))
         self.instructions = []
         for instruction in bot['instructions']:
             if not "pair" in instruction:
