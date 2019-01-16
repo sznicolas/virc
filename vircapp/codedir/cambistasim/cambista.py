@@ -152,7 +152,10 @@ while (True):
 
     delorders = []
     for order in orderbook.orders:
-        ticker = tickers[order['pair']] 
+        ticker = tickers.get(order['pair']) 
+        if ticker is None:
+            print "No ticker data for '%s'. Next" % order['pair']
+            continue
         if ( (ticker >= order['price']) and (order['side'] == "sell") or 
              (ticker <= order['price']) and (order['side'] == "buy")  ):
             logging.info("Order '%s' filled" % order['order_id'])
