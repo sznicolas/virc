@@ -15,10 +15,12 @@ channels = {'in'            : cambista_channel + ":orders",
             'error'         : cambista_channel + ":error",
             'order_done'  : c_tobot   + ":order_done:",
             'new_order'     : c_tobot   + ":new_order:",
-            'cancel_order'  : c_tobot   + ":cancel_order:"
+            'cancel_order'  : c_tobot   + ":cancel_order:",
+            'order_status'  : c_tobot   + ":order_status:"
             }
 cambista_role = "sim"
 cambista_name = "Coinbase Emulated"
+cambista_icon = "fas fa-gamepad"
 
 class OrderBook(object):
     def __init__(self, redis_connection):
@@ -31,7 +33,7 @@ class OrderBook(object):
         self.add_order({
             'pair': msg['pair'], 'price': msg['price'],
             'size': msg['size'], 'order_id': order_id,
-            'side': 'buy'
+            'side': 'buy', 'status': 'open'
             })
         return order_id
 
@@ -40,7 +42,7 @@ class OrderBook(object):
         self.add_order({
             'pair': msg['pair'], 'price': msg['price'],
             'size': msg['size'], 'order_id': order_id,
-        'side': 'sell'
+            'side': 'sell', 'status' : 'open'
         })
         return order_id
 
@@ -53,19 +55,25 @@ class OrderBook(object):
         self._set_orders()
 
     def cancel_order(self, order_id):
-        index = self.find_order_by_id(order_id)
+        index = self.get_order_index(order_id)
         if index is None:
             utils.flash("order '{}' not found. Can't be canceled".format(order_id), "error", sync=false )
         else:
             self.del_order(index)
 
-    def find_order_by_id(self, order_id):
+    def get_order_index(self, order_id):
         i = 0
         for o in self.orders:
             if o['order_id'] == order_id:
                 return i
             i += 1
         return None
+
+    def get_order(self, order_id):
+        i = self.get_order_index(order_id)
+        if i is None:
+            return i
+        return self.orders[i]
 
     def _get_orders(self):
         orders = self.rds.get("cambisim:orderbook")
@@ -83,10 +91,17 @@ rds = utils.redis_connect()
 logging.info("Started.")
 orderbook = OrderBook(redis_connection=rds)
 
+regkey = os.environ.get("CAMBISTA_CHANNELS") + cambista_channel
+rds.set(regkey, json.dumps(
+    {
+        "role": cambista_role,
+        "cambista_name": cambista_name,
+        "cambista_icon": cambista_icon,
+        "channels": channels
+    } ))
+
 while (True):
     # declare myself as running
-    regkey = os.environ.get("CAMBISTA_CHANNELS") + cambista_channel
-    rds.set(regkey, json.dumps({"role": cambista_role, "cambista_name": cambista_name, "channels": channels}))
     rds.expire(regkey, 60)
 
     # get new message
@@ -117,6 +132,11 @@ while (True):
             orderbook.cancel_order(order_msg['order_id'])
             rds.lpush(channels['cancel_order'] + order_msg['uid'], json.dumps({ 'type': 'order_canceled', 'order_id': order_msg['order_id']}))
             utils.flash("Order '%s' canceled" % order_msg['order_id'], "info", sync=False)
+        elif (order_msg['type'] == "get_order_status"):
+            order = orderbook.get_order(order_msg['order_id'])
+            if order is None:
+                order = {'order_id': order_id, 'status': 'canceled'}
+            rds.lpush(channels['order_status'] + order_msg['order_id'], json.dumps(order))
         else:
           logging.warning("Message type unknown in " + str(order_msg))
 
@@ -148,7 +168,7 @@ while (True):
                     "type": "done", 
                 }
             rds.lpush(channels['order_done'] + order['order_id'], json.dumps(msg))
-            utils.flash("Order '%s' (%s) filled" % (msg['order_id'], order_msg['side']), "info", sync=False)
+            utils.flash("Order '%s' (%s) filled" % (msg['order_id'], msg['side']), "info", sync=False)
             logging.info("Order filled: " + order['order_id'])
         i += 1
     for di in delindexes:

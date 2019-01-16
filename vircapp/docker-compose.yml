@@ -16,8 +16,6 @@ services:
         restart: always
         volumes:
             - ../redisdata/:/data
-        ports:
-            - "6379:6379"
         networks:
             - back
             - front

@@ -100,7 +100,12 @@ def bot_new_simple():
 @app.route("/bot_dup/<uid>", methods=["GET", "POST"])
 def bot_dup(uid):
     # get bot data
-    bot = json.loads(rds.get("trader:rb:" + uid))
+    bot = rds.get("trader:rb:" + uid)
+    if bot is None:
+        bot = rds.get("trader:hb:" + uid)
+        if bot is None:
+            return "Bot's uid '%s' found neither in trader:rb: nor trader:hb" % uid
+    bot = json.loads(bot)
     # get bot type
     if (bot['type'] == "simple"):
         form = SimpleBot()
@@ -149,6 +154,7 @@ def bot_add():
                 "pair": form.pair.data,
                 "cambista_link": form.cambista.data,
                 "cambista_title": dict(form.cambista.choices).get(form.cambista.data),
+                "cambista_icon": json.loads(rds.get(form.cambista.data))['cambista_icon'],
                 "instructions" : instructions
               }
         rds.lpush("trader:build", str(json.dumps(bot)))
@@ -165,7 +171,7 @@ def bot_continue(uid):
     except:
         return "Bot " + uid + " not found"
     rds.lpush("trader:build", str(json.dumps(bot)))
-    return render_template("bots/bots.html")
+    return redirect(request.referrer)
 
 @app.route("/bot_new_stop_loss", methods=["GET", "POST"])
 def bot_new_stop_loss():

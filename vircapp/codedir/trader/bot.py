@@ -27,7 +27,7 @@ class SimpleBot(object):
         if bot.get('current_instruction'):
             self.current_instruction = Instruction(bot.get('current_instruction'))
         else:
-            self.current_instruction = Instruction(self.instructions[self.instructions_index])
+            self.current_instruction = copy.deepcopy(self.instructions[self.instructions_index])
         self.current_instruction.set_uid(self.uid)
 
     def to_dict(self):

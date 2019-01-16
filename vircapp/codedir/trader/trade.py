@@ -54,12 +54,18 @@ def stop_bot(uid):
 def stop_all_bots():
     for k in running_bots.keys():
         stop_bot(k)
+
+#def on_sigterm(signum, frame):
+#    stop_all_bots()
+
 # -----------------------------------------------
 # -- init --
 
 logging.info("Starting trader...")
 running_bots = {} # {uid: proc} proc is from subprocess.Popen
 
+#TODO: use an env var to indicate if the bots mus be stopped and orders cancelled.
+#signal.signal(signal.SIGTERM, on_sigterm)
 rds = utils.redis_connect()
 
 print("{} : Ready").format(str(time.ctime(int(time.time()))))

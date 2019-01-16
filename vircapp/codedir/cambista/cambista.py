@@ -16,10 +16,12 @@ channels = {'in'            : cambista_channel + ":orders",
             'error'         : cambista_channel + ":error",
             'order_done'    : c_tobot   + ":order_done:",
             'new_order'     : c_tobot   + ":new_order:",
+            'order_status'  : c_tobot   + ":order_status:",
             'cancel_order'  : c_tobot   + ":cancel_order:"
             }
 cambista_role = "real"
 cambista_name = "Coinbase Pro"
+cambista_icon = "fas fa-landmark"
 
 def rw_auth():
     creds_rw = json.loads(open(cb_rw_keys).read())
@@ -83,9 +85,14 @@ def cb_sell(msg):
     print recv
     return recv
 
+def cb_get_order(order_id):
+    recv = auth_client.get_order(order_id)
+    return recv
+
 def cb_cancel_order(order_id):
     recv = auth_client.cancel_order(order_id)
-    return { 'type': 'order_canceled', 'id': recv[0]}
+    logging.info("Order canceled, received from server: %s " % recv)
+    return { 'type': 'order_canceled', 'id': order_id}
 
 def cb_send_order(order_msg):
     """ sends the order to cb's API, with retries. If unreachable, republish the received message to itself """
@@ -104,6 +111,10 @@ def cb_send_order(order_msg):
             logging.info("Cancel Order '%s'" % order_msg['order_id']) 
             recv = cb_cancel_order(order_msg['order_id'])
             channel = channels['cancel_order'] + order_msg['uid']
+        # get order status
+        elif ( order_msg['type'] == 'get_order_status'):
+            recv = cb_get_order(order_msg['order_id'])
+            channel = channels['order_status'] + order_msg['order_id']
         # Unknown message
         else:
           logging.warning("Message type unknown in " + str(recv))
@@ -158,14 +169,23 @@ except Exception as e:
 wsClient.start()
 logging.info("Cambista is ready")
 
+# set cambista info
+regkey = os.environ.get("CAMBISTA_CHANNELS") + cambista_channel
+rds.set(regkey, json.dumps(
+        {
+            "role": cambista_role,
+            "cambista_name": cambista_name,
+            "cambista_icon": cambista_icon,
+            "channels": channels
+        }
+    ))
+
 while (True):
     # Workaround disconnect after 60sec of inactivity:
     if wsClient.ws:
         wsClient.ws.ping("keepalive")
 
     # declare myself as running
-    regkey = os.environ.get("CAMBISTA_CHANNELS") + cambista_channel
-    rds.set(regkey, json.dumps({"role": cambista_role, "cambista_name": cambista_name, "channels": channels}))
     rds.expire(regkey, 60)
 
     # get new message

@@ -11,6 +11,7 @@
 
 ### Trader
 #### Verify key error (if stop called twice)
+#### Set indication if simplebot started in sell step. (Duplicate invert prices !)
 #### When bot is restarted : verify order status
 #### Simplebot doesn't like trapping a SIGTERM when bloqued in brpop 
 ```
