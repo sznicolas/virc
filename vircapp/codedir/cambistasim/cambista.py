@@ -48,18 +48,18 @@ class OrderBook(object):
 
     def add_order(self, order):
         self.orders.append(order)
-        self._set_orders()
+        self._save_orderbook()
 
-    def del_order(self, index):
-        self.orders.pop(index)
-        self._set_orders()
+    def del_order(self, order_id):
+        self.orders.pop(self.get_order_index(order_id))
+        self._save_orderbook()
 
     def cancel_order(self, order_id):
         index = self.get_order_index(order_id)
         if index is None:
             utils.flash("order '{}' not found. Can't be canceled".format(order_id), "error", sync=false )
         else:
-            self.del_order(index)
+            self.del_order(order_id)
 
     def get_order_index(self, order_id):
         i = 0
@@ -82,7 +82,7 @@ class OrderBook(object):
         else:
             self.orders = []
 
-    def _set_orders(self):
+    def _save_orderbook(self):
         self.rds.set("cambisim:orderbook", json.dumps(self.orders))
 
 # -----------------------------------------------
@@ -135,7 +135,7 @@ while (True):
         elif (order_msg['type'] == "get_order_status"):
             order = orderbook.get_order(order_msg['order_id'])
             if order is None:
-                order = {'order_id': order_id, 'status': 'canceled'}
+                order = {'order_id': order_msg['order_id'], 'status': 'canceled'}
             rds.lpush(channels['order_status'] + order_msg['order_id'], json.dumps(order))
         else:
           logging.warning("Message type unknown in " + str(order_msg))
@@ -150,14 +150,13 @@ while (True):
             print "No value for ticker '" + pair + "', exiting."
             sys.exit(1)
 
-    i = 0
-    delindexes = []
+    delorders = []
     for order in orderbook.orders:
         ticker = tickers[order['pair']] 
         if ( (ticker >= order['price']) and (order['side'] == "sell") or 
              (ticker <= order['price']) and (order['side'] == "buy")  ):
             logging.info("Order '%s' filled" % order['order_id'])
-            delindexes.append(i)
+            delorders.append(order['order_id'])
             msg = { "order_id": order['order_id'],
                     "price": ticker, 
                     "product_id": order['pair'], 
@@ -170,6 +169,5 @@ while (True):
             rds.lpush(channels['order_done'] + order['order_id'], json.dumps(msg))
             utils.flash("Order '%s' (%s) filled" % (msg['order_id'], msg['side']), "info", sync=False)
             logging.info("Order filled: " + order['order_id'])
-        i += 1
-    for di in delindexes:
-        orderbook.del_order(di)
+    for do in delorders:
+        orderbook.del_order(do)

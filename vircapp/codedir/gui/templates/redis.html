@@ -4,20 +4,19 @@
 	{% if tickers %}
 	<h1>cb:mkt:tick (Coinbase Market Tickers)</h1>
 	<div class="row">
-		<div class="col-md-4">
+		<div class="col-sm-8">
 			<table class="table table-striped container">
 			{% for tick in tickers %}
 				<tr><th scope="row">{{ tick['name'] }}</th><td>{{ tick['pair'] }}</td><td>{{ tick['price'] }}</td></tr>
 			{% endfor %}
 			</table>
 		</div>
-		<div class="col-md-8"></div>
 	</div>
 	{% endif %}
 	{% if changes %}
 	<h1>cb:mkt:change:* (Coinbase Market Change)</h1>
 	<div class="row">
-		<div class="col-md-8">
+		<div class="col-sm-8">
 		{% for change in changes %}
 		<button class="clickable btn btn-click" data-toggle="collapse" id="{{ change['pair'] }}" data-target=".{{ change['pair'] }}">
 			{{ change['name'] }}
@@ -36,7 +35,6 @@
 				</table>
 		{% endfor %}
 		</div>
-		<div class="col-md-4"></div>
 	</div>
 	{% endif %}
 	{% if traderrb %}
@@ -47,17 +45,32 @@
 					<tr><th>Name</th><th>Value</th></tr>
 					{% for key, data in traderrb.iteritems() %}
 					<tr>
-						<th scope="row">
-		<button class="clickable btn btn-click" data-toggle="collapse" id="{{ key }}" data-target=".{{ key }}">
-			{{ key }}
-		</button>
-						</th>
-						<td><pre class="collapse {{ key }}">{{ data }}</pre></td>
+						<th>
+				<button class="clickable btn btn-click" data-toggle="collapse" id="{{ key }}" data-target=".{{ key }}">
+				{{ key }}</button>
+						</th><td><pre class="collapse {{ key }}">{{ data }}</pre></td>
 					</tr>
 					{% endfor %}
 				</table>
 			</div>
-			<div class="col-md-4"></div>
+		</div>
+	{% endif %}
+	{% if traderhb %}
+		<h1>trader:hb (Bot history)</h1>
+		<div class="row">
+			<div class="col-md-8">
+				<table class="table table-striped container">
+					<tr><th>Name</th><th>Value</th></tr>
+					{% for key, data in traderhb.iteritems() %}
+					<tr>
+						<th>
+				<button class="clickable btn btn-click" data-toggle="collapse" id="{{ key }}" data-target=".{{ key }}">
+				{{ key }}</button>
+						</th><td><pre class="collapse {{ key }}">{{ data }}</pre></td>
+					</tr>
+					{% endfor %}
+				</table>
+			</div>
 		</div>
 	{% endif %}
 	{% if orderbook_sim %}
@@ -77,7 +90,6 @@
 					{% endfor %}
 				</table>
 			</div>
-			<div class="col-md-4"></div>
 		</div>
 	{% endif %}
 	{% if redisdata %}
@@ -91,19 +103,17 @@
 					<tbody>
 					{% for data in redisdata %}
 						<tr>
-							<th scope="row">{{ data['name'] }}</th>
+							<th>{{ data['name'] }}</th>
 							<td>{{ data['type'] }}</td>
 							<td>{{ data['value'] }}</td>
 							<td><a href="{{ url_for("redis_del", key=data['name']) }}" role="button" class="btn btn-danger btn-sm">
-          						<span class="fas fa-window-close"></span> Remove 
+											<span class="{{ icons['delete'] }}"></span> Remove 
         						</a>
 							</td>
 						</tr>
 					{% endfor %}
 					</tbody>
 				</table>
-			</div>
-			<div class="col-md-2">
 			</div>
 		</div>
 	{% endif %}

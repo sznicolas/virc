@@ -7,6 +7,7 @@ from flask_sse import sse
 from forms import SimpleBot, StopLossBot
 
 import utils
+from guiutils import *
 
 rds = utils.redis_connect()
 
@@ -31,7 +32,7 @@ def inject_common_data():
     for k in sorted(rds.scan(match="cb:mkt:tick:*", count=100)[1]):
         pair = k.split(":")[3]
         panel_tickers.append({'name': k, 'pair': k.split(":")[-1], "price": rds.get(k)})
-    return dict(panel_tickers=panel_tickers)
+    return dict(panel_tickers=panel_tickers, icons=icons)
 
 @app.before_request
 def get_status():
@@ -66,13 +67,15 @@ def bots():
         bots.append(json.loads(rds.get(k)))
     for k in rds.scan_iter(match = "trader:hb:*"):
         histbots.append(json.loads(rds.get(k)))
-    return render_template("bots/bots.html", bots=bots, newbots=newbots, histbots=histbots)
+    return render_template("bots/index.html", bots=bots, newbots=newbots, histbots=histbots)
 
 @app.route("/bot/<uid>")
 def bot(uid):
     res = rds.get("trader:rb:" + uid)
     if res is None:
-        return render_template("404.html", title="<h1>Bot {} was not found</h1>".format(uid)), 404
+        res = rds.get("trader:hb:" + uid)
+        if res is None:
+            return render_template("404.html", title="<h1>Bot {} was not found</h1>".format(uid)), 404
     bot = json.loads(res)
     return render_template("bots/bot.html", bot=bot)
 
@@ -86,8 +89,8 @@ def bots_stopall():
     rds.rpush("trader:action", json.dumps({"type": "stop_all_bots"}))
     return render_template("bots.html")
 
-@app.route("/bot_new_simple", methods=["GET", "POST"])
-def bot_new_simple():
+@app.route("/bot/new_simple", methods=["GET", "POST"])
+def new_simplebot():
     form = SimpleBot()
     # TODO: Put this 2 blocks in 2 functions (pair, cambista)
     form.pair.choices = [(p,p) for p in pairs]
@@ -95,7 +98,7 @@ def bot_new_simple():
     for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
         cambista_info = json.loads(rds.get(k))
         form.cambista.choices.append((k, "{} ({})".format(cambista_info['cambista_name'], cambista_info['role'])))
-    return render_template("bots/bot_new_simple.html", form=form)
+    return render_template("bots/new_simple.html", form=form)
 
 @app.route("/bot_dup/<uid>", methods=["GET", "POST"])
 def bot_dup(uid):
@@ -121,11 +124,15 @@ def bot_dup(uid):
         form.instructions_loop.data = bot['instructions_loop']
         form.cambista.data = bot['cambista_link']
         form.size.data = bot["instructions"][0]["size"]
-        form.buy_at.data = bot["instructions"][0]['price'] 
-        form.sell_at.data = bot["instructions"][1]['price'] 
+        if (bot["instructions"][0]['side'] == "sell"): 
+            form.sell_at.data = bot["instructions"][0]['price'] 
+            form.buy_at.data = bot["instructions"][1]['price'] 
+        else:
+            form.buy_at.data = bot["instructions"][0]['price'] 
+            form.sell_at.data = bot["instructions"][1]['price'] 
     else:
         return("Sorry, type {} not implemented yet.".format(bot['type'])) 
-    return render_template("bots/bot_new_simple.html", form=form)
+    return render_template("bots/new_simple.html", form=form)
 
 @app.route("/bot_add", methods=["POST"])
 def bot_add():
@@ -160,8 +167,7 @@ def bot_add():
         rds.lpush("trader:build", str(json.dumps(bot)))
         return redirect(url_for("bots"))
     else:
-        #return render_template("bots/bot_new_simple.html", form=form)
-        return render_template("bots/bots.html")
+        return render_template("bots/")
 
 @app.route("/bot_continue/<uid>", methods=["GET", "POST"])
 def bot_continue(uid):
@@ -173,11 +179,11 @@ def bot_continue(uid):
     rds.lpush("trader:build", str(json.dumps(bot)))
     return redirect(request.referrer)
 
-@app.route("/bot_new_stop_loss", methods=["GET", "POST"])
-def bot_new_stop_loss():
+@app.route("/new_stop_loss", methods=["GET", "POST"])
+def new_stop_loss():
     form = StopLossBot()
     form.pair.choices = [(p,p) for p in pairs]
-    return render_template("bots/bot_new_stop_loss.html", form=form)
+    return render_template("bots/new_stop_loss.html", form=form)
 
 # --------- Trade Pages ---------
 @app.route("/trade_status")
@@ -191,6 +197,7 @@ def redis_ls():
     changes = []
     tickers=[]
     traderrb = {}
+    traderhb = {}
     # redis unknown keys
     redisdata = []
     orderbook_sim=[]
@@ -204,7 +211,10 @@ def redis_ls():
             tickers.append({'name': k, 'pair': k.split(":")[-1], "price": rds.get(k)})
         elif k.startswith("trader:rb"):
             bot = json.loads(rds.get(k))
-            traderrb[bot['uid']] = json.dumps(bot, sort_keys = True, indent = 4, separators = (',', ': '))
+            traderrb[bot['name'] + " " + bot['uid']] = json.dumps(bot, sort_keys = True, indent = 4, separators = (',', ': '))
+        elif k.startswith("trader:hb"):
+            bot = json.loads(rds.get(k))
+            traderhb[bot['name'] + " " + bot['uid']] = json.dumps(bot, sort_keys = True, indent = 4, separators = (',', ': '))
         elif (k == "cambisim:orderbook"):
             orderbook_sim = json.loads(rds.get(k))
         # Other messages
@@ -216,7 +226,7 @@ def redis_ls():
             elif (rdstype == 'list'): 
                 redisdata.append({'name': k, 'value' : rds.lrange(k, 0, -1), 'type': rdstype})
 
-    return render_template("redis.html", redisdata=redisdata, changes=changes, tickers=tickers, traderrb=traderrb, orderbook_sim=orderbook_sim)
+    return render_template("redis.html", redisdata=redisdata, changes=changes, tickers=tickers, traderrb=traderrb, traderhb=traderhb, orderbook_sim=orderbook_sim)
 
 @app.route("/redis_del/<key>")
 def redis_del(key):

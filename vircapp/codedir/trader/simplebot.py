@@ -94,18 +94,19 @@ for instruction in mybot.iter_instructions():
         mybot.current_instruction.set_order_id(waited_order_id)
         update_blueprint(mybot)
     else:
-        print ("Reloaded bot, verify previously sent order")
         logging.info("Reloaded bot, verify previously sent order")
         rds.lpush(cambista_defs['channels']['in'], 
                 json.dumps({'type' : 'get_order_status', 'order_id': waited_order_id, 'uid': mybot.uid}))
         msg = json.loads(rds.brpop(cambista_defs['channels']['order_status'] +  waited_order_id)[1])
-        print "*** ", msg
-        if (msg.get('status') != "open"):
-            # TODO: what if filled ?
+        if (msg.get('status') == "filled"):
+            mybot.current_instruction.set_order_filled(waited_order_id)
+            logging.info("Order %s is filled." % (waited_order_id))
+            update_blueprint(mybot)
+            continue
+        elif (msg.get('status') != "open"):
             utils.flash("Order is not in 'open' state, exit.")
             logging.info("Order is not in 'open' state, exit.")
             stop_bot(mybot, status="order not open", exitcode=4)
-        
 
     logging.info("Waiting for order %s execution..." % waited_order_id)
     msg = rds.brpop(cambista_defs['channels']['order_done'] + waited_order_id)[1]

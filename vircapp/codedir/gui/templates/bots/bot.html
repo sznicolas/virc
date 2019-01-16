@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% block content %}
+{% if bot %}
+<div class="container">
+	<h1> Bot detail </h1>
+	<div class="card bot-elements ">
+		<div class="card-header">
+			<div class="row">
+				<div class="col-sm-8">
+					<h2> Name: {{ bot['name'] }}</h2>
+				</div><div class="col-sm-4">
+						<h3 class="float-right"><i class="{{ bot['cambista_icon'] }}"></i></h3>
+				</div>
+			</div>
+		</div>
+		<div class="card-body">
+			<div class="row">
+				<div class="col-sm-3 thick">Status:</div>
+				<div class="col-sm-6">{{ bot['status'] }}</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-3 thick">Started at:</div>
+				<div class="col-sm-9">{{ bot['start_date'][:-7] }}</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-3 thick">Type:</div><div class="col-sm-9">{{ bot['type'] }}</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-3 thick">Loop:</div><div class="col-sm-9">{{ bot['instructions_loop'] }}</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-3 thick">Cambista:</div><div class="col-sm-9">{{ bot['cambista_title'] }}</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-3 thick">PID:</div><div class="col-sm-9">{{ bot['pid'] }}</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-3 thick">UID:</div><div class="col-sm-9">{{ bot['uid'] }}</div>
+			</div>
+			{% if bot['instructions_count'] > 1 %}
+				{% with s0 = bot['instructions'][0]['price'] * bot['instructions'][0]['size'],
+					s1 = bot['instructions'][1]['price'] * bot['instructions'][1]['size'] %}
+					<div class="row">
+						<div class="col-sm-3 thick">Current gain:</div>
+						<div class="col-sm-9">
+						{% if (bot['instructions'][0]['side'] == 'buy') %}
+							{{ ( s1 - s0 ) * (bot['instructions_count'] // 2) }}
+						{% else %}
+							{{ ( s0 - s1 ) * (bot['instructions_count'] // 2) }}
+						{% endif %}
+							{{ bot['pair'][4:] }}
+					</div>
+				</div>
+				{% endwith %}
+			{% endif %}
+		</div>
+	</div>
+	{% with instructions = bot['instructions'] , title = "Instructions" %}
+	{% include 'bots/includes/bot_instructions.html' %}
+	{% endwith %}
+	{% with instructions = [bot['current_instruction']] , title = "Current instruction", isactive = True %}
+	{% include 'bots/includes/bot_instructions.html' %}
+	{% endwith %}
+	{% with instructions = bot['instructions_history']|reverse, title = "History" %}
+	{% include 'bots/includes/bot_instructions.html' %}
+	{% endwith %}
+</div>
+{% endif %}
+{% endblock content %}

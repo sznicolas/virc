@@ -2,7 +2,6 @@
 
 ## Bugs
 ### Cambista
-#### When collections are empty
 
 * Manage 'rejected' 'post\_only' message from Coinbase:
 ```
@@ -10,10 +9,7 @@
 ```
 
 ### Trader
-#### Verify key error (if stop called twice)
-#### Set indication if simplebot started in sell step. (Duplicate invert prices !)
-#### When bot is restarted : verify order status
-#### Simplebot doesn't like trapping a SIGTERM when bloqued in brpop 
+* Simplebot doesn't like trapping a SIGTERM when bloqued in brpop :
 ```
 trader_1       |   File "/usr/local/lib/python2.7/dist-packages/redis/connection.py", line 636, in read_response
 trader_1       |     raise e
@@ -23,16 +19,20 @@ Not sure every case has been taken into account
 
 ## Gui
 * dynamically update bots page (in progress)
+* Find solution between sse (pubsub) and flash (in a redis list) to be sure that every message is displayed. 
 * get and display account and last filled orders (, ...)
-* alert when a container loops restart
+
+## Monitoring
+* gui's flash alert when a container loops restart (?)
+* mongodb: mapReduce old market data
+* delete 'order filled' messages which belongs to no bot (user input in Coinbase) 
 
 ## Architecture
 * prefix all coinbase-specific containers by cb<container>
 
-## Maintenance
-* mongodb: mapReduce old market data
 
 ## Functionnalities
+* Group and chain bots. Develelop watchdog bots chained with trading bots.
 * Simplebot: add stop loss
 * Implement other bots (SimpleStopLoss who can cancel all or a part of existing orders, rangebot, ...)
 

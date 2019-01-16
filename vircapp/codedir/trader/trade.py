@@ -83,7 +83,7 @@ while True:
         else:
             new_bot_uid = recv.get('uid')
             if new_bot_uid is None:
-                new_bot_uid = str(uuid.uuid4())
+                new_bot_uid = str(uuid.uuid4())[:8]
             recv['uid'] = new_bot_uid
             rds.set("trader:startbot:" + new_bot_uid, json.dumps(recv))
             res = subprocess.Popen(["./simplebot.py", new_bot_uid])

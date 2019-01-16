@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Create a StopLoss Bot</h1>
+<form method="POST" action="">
+{{ form.hidden_tag() }}
+<div class="row">
+	<div class="col-xs-4 bot-elements">
+		<h2>Bot header</h2>
+		<div class="row">
+			<div class="col-xs-4"> {{ form.bot_name.label }} </div>
+			<div class="col-xs-4"> {{ form.bot_name() }} </div>
+		</div>
+	</div>
+</div>
+<div class="row">
+	<div class="col-xs-4 bot-elements">
+		<h2>Bot elements</h2>
+	  	<div class="row">
+				<div class="col-xs-2"> {{ form.bypair() }} {{ form.bypair.label }} </div>
+			<div class="col-xs-4"> {{ form.pair.label }} </div>
+			<div class="col-xs-4"> {{ form.pair() }} </div>
+		</div>
+	  	<div class="row">
+			<div class="col-sm-4">  form.instructions_loop.label  </div>
+			<div class="col-sm-4">  form.instructions_loop()  </div>
+		</div>
+	  	<div class="row" data-toggle="tooltip" title="Choose cambista module">
+			<div class="col-sm-4">  form.cambista.label  </div>
+			<div class="col-sm-4">  form.cambista()  </div>
+		</div>
+	</div>
+</div>
+{% endblock content %}
