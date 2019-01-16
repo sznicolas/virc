@@ -1,7 +1,6 @@
 # Utils v 1.1
 
-import redis
-import json
+import redis, json, uuid
 
 redissrv = "redis"
 redisport = 6379
@@ -21,19 +20,16 @@ def redis_connect():
         raise 
     return rds
 
-
 def flash(message, level="info", sync=True):
-    """ send message to flask in sync mode, or to sse """
-    """ the old one, to be removed"""
-#    print "utils.flash. type: {} - content: {}".format(type(message), message)
+    """ send message to flask for 15sec AND to sse """
+    """ Will be replaced by virc_publish           """
     fmessage = json.dumps( {
         "type": level,
         "data": message })
-    if sync:
-        rds.lpush("gui:message", fmessage)
-    else:
-        rds.publish("gui:flash", fmessage)
-#    print "utils.flash. fmessage type: {} - content: {}".format(type(fmessage), fmessage)
+    msgkey = "gui:message:" + str(uuid.uuid4())[:8]
+    rds.set(msgkey, fmessage)
+    rds.expire(msgkey, 15)
+    rds.publish("gui:flash", fmessage)
 
 def virc_publish(message, category, level='info'):
     """ send message to flask in sync mode, or to sse """
@@ -45,6 +41,7 @@ def virc_publish(message, category, level='info'):
             'level': level }
         } )
     rds.publish("virc:pubsub", fmessage)
+    print "*** DBG virc_publish: %s" % fmessage
 
 class Pairs():
     """ pairs exchanged we want to get are defined in docker-compose.yml 

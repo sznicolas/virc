@@ -47,8 +47,8 @@
 					<tr>
 						<th>
 				<button class="clickable btn btn-click" data-toggle="collapse" id="{{ key }}" data-target=".{{ key }}">
-				{{ key }}</button>
-						</th><td><pre class="collapse {{ key }}">{{ data }}</pre></td>
+						 {{ data['name'] }} {{ key }}</button>
+						</th><td><pre class="collapse {{ key }}">{{ data['data'] }}</pre></td>
 					</tr>
 					{% endfor %}
 				</table>
@@ -65,8 +65,8 @@
 					<tr>
 						<th>
 				<button class="clickable btn btn-click" data-toggle="collapse" id="{{ key }}" data-target=".{{ key }}">
-				{{ key }}</button>
-						</th><td><pre class="collapse {{ key }}">{{ data }}</pre></td>
+						 {{ data['name'] }} {{ key }}</button>
+						</th><td><pre class="collapse {{ key }}">{{ data['data'] }}</pre></td>
 					</tr>
 					{% endfor %}
 				</table>

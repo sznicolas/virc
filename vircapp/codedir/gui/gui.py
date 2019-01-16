@@ -36,9 +36,12 @@ def inject_common_data():
 
 @app.before_request
 def get_status():
-    while ( rds.llen("gui:message") > 0 ):
-        msg = json.loads(rds.lpop("gui:message"))
+    for m in  rds.scan_iter(match="gui:message:*"):
+        jmsg = rds.get(m)
+        msg = json.loads(jmsg)
+        rds.delete(m)
         flash(msg['data'], msg['type'])
+        rds.publish("virc:pubsub", jmsg)
 
 # --------- Main Pages ---------
 @app.route("/")
@@ -211,10 +214,14 @@ def redis_ls():
             tickers.append({'name': k, 'pair': k.split(":")[-1], "price": rds.get(k)})
         elif k.startswith("trader:rb"):
             bot = json.loads(rds.get(k))
-            traderrb[bot['name'] + " " + bot['uid']] = json.dumps(bot, sort_keys = True, indent = 4, separators = (',', ': '))
+            traderrb[bot['uid']] =  {
+                    'name': bot['name'],
+                    'data': json.dumps(bot, sort_keys = True, indent = 4, separators = (',', ': ')) }
         elif k.startswith("trader:hb"):
             bot = json.loads(rds.get(k))
-            traderhb[bot['name'] + " " + bot['uid']] = json.dumps(bot, sort_keys = True, indent = 4, separators = (',', ': '))
+            traderhb[bot['uid']] =  {
+                    'name': bot['name'],
+                    'data': json.dumps(bot, sort_keys = True, indent = 4, separators = (',', ': ')) }
         elif (k == "cambisim:orderbook"):
             orderbook_sim = json.loads(rds.get(k))
         # Other messages
