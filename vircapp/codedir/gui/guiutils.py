@@ -3,6 +3,7 @@ icons = {
         "loop"     : "fas fa-redo",
         "oneshot"  : "fas fa-tasks",
         "stop"     : "fas fa-stop",
+        "pause"    : "fas fa-pause",
         "close"    : "fas fa-window-close",
         "dup"      : "fas fa-edit",
         "continue" : "fas fa-play",

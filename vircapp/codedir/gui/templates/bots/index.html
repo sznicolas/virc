@@ -22,7 +22,7 @@
 	{% endif %}
     {% if bots %}
 		<div class="row">
-			<div class="col-sm-10">
+			<div class="col-sm-12">
 	    		<h1> Running Bots</h1>
 				<table class="table table-striped container bots_table">
 						<tr><th>Name</th><th>envt</th><th>Start date</th><th>Type</th><th>Loop?</th><th>Instr.<br />count</th><th>Current instruction</th><th colspan="2">Actions</th></tr>
@@ -31,21 +31,26 @@
 						<th><a href="/bot/{{ bot['uid'] }}">{{ bot['name'] }}</a></th>
 
 						<td>
-							<span class="{{ bot['cambista_icon'] }}" data-toggle="tooltip" title="{{ bot['cambista_title'] }}"></span>
+							<span class="{{ bot['cambista']['icon'] }}" data-toggle="tooltip" title="{{ bot['cambista']['name'] }}"></span>
 						</td>
 						<td data-toggle="tooltip" title="{{ bot['start_date'][:19] }}">{{ bot['start_date'][:10] }}</td>
 						<td>{{ bot['type'] }}</td>
 						<td>
-							<span class="{{ icons['loop'] if bot['instructions_loop'] else icons['oneshot'] }}" data-toggle="tooltip" title="{{ 'Loop' if bot['instructions_loop'] else 'One shot' }}"></span>
+							<span class="{{ icons['loop'] if bot['instruction_book']['loop'] else icons['oneshot'] }}" data-toggle="tooltip" title="{{ 'Loop' if bot['instructions_loop'] else 'One shot' }}"></span>
 						</td>
-						<td>{{ bot['instructions_count'] }}</td>
-						{% with ci = bot['instructions'][bot['instructions_index']] %}
+						<td>{{ bot['instruction_book']['count'] }}</td>
+						{% with ci = bot['instruction_book']['current_instruction'] %}
 						<td>{{ "{} {} {} @ {}{}/{}".format(ci['side'], ci['size'], ci['pair'][:3], ci['price'], ci['pair'][4:], ci['pair'][:3]) }} </td>
 						{% endwith %}
 							<td><a href="{{ url_for("bot_stop", uid=bot['uid']) }}" role="button" class="btn btn-danger btn-sm confirmation">
 								<span class="{{ icons['stop'] }}"></span> Stop
         						</a>
-							</td><td>
+							</td>
+							<td><a href="{{ url_for("bot_pause", uid=bot['uid']) }}" role="button" class="btn btn-warning btn-sm confirmation">
+								<span class="{{ icons['pause'] }}"></span> Pause
+        						</a>
+							</td>
+							<td>
 								<a href="{{ url_for("bot_dup", uid=bot['uid']) }}" role="button" class="btn btn-info btn-sm">
 										<span class="{{ icons['dup'] }}"></span> Duplicate
         						</a>
@@ -83,14 +88,14 @@
 					<tr>
 						<th><a href="/bot/{{ bot['uid'] }}">{{ bot['name'] }}</a></th>
 						<td>
-							<span class="{{ bot['cambista_icon'] }}" data-toggle="tooltip" title="{{ bot['cambista_title'] }}"></span>
+							<span class="{{ bot['cambista']['icon'] }}" data-toggle="tooltip" title="{{ bot['cambista']['name'] }}"></span>
 						</td>
 						<td data-toggle="tooltip" title="{{ bot['start_date'][:19] }}">{{ bot['start_date'][:10] }}</td>
 						<td>{{ bot['type'] }}</td>
 						<td>{{ bot['status'] }}</td>
-						<td>{{ bot['instructions_count'] }}</td>
+						<td>{{ bot['instruction_book']['count'] }}</td>
 						<td>
-						{% if bot['status'] in ["dead"] %}
+						{% if bot['status'] in ["dead", "paused"] %}
 							<a href="{{ url_for("bot_continue", uid=bot['uid']) }}" role="button" class="btn btn-warning btn-sm confirmation">
 								<span class="{{ icons['continue'] }}"></span> Continue
         					</a>

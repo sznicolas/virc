@@ -78,10 +78,21 @@ function fill_ticker_details(pair){
 		} else if (stats[k].oc < 0) {
 				bgstyle = "background-color: darkRed;";
 		}
+		if ( stats[k].volume >= 10) {
+				volume = Math.round(stats[k].volume);
+		} else {
+				volume = stats[k].volume.toFixed(2);
+		}
+		if (stats[k].range < 1){
+				range = Math.round(stats[k].range.toFixed(4) * 100) / 100 ;
+		} else {
+				range = Math.round(stats[k].range.toFixed(1) * 100) / 100 ;
+		}
 		html = "<tr style='" + bgstyle + "'><th>" + stats[k].title +
 				"</th><td onclick='fill_buy_low(this)'>" + stats[k].low +
-				"</td><td onclick='fill_sell_high(this)'>" + stats[k].high + "</td><td>" + stats[k].volume.toFixed(2) + 
-				"</td><td>" + stats[k].oc.toFixed(2) + "%</td></tr>";
+				"</td><td onclick='fill_sell_high(this)'>" + stats[k].high + "</td><td>" + 
+				volume + "</td><td>" + range +
+				"</td><td>" + Math.round(stats[k].oc.toFixed(2) * 100/100) + "%</td></tr>";
 		$(html).appendTo('#ticker-detail-tbody');
 	}
 }

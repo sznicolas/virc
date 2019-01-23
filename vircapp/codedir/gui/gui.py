@@ -4,7 +4,7 @@ from flask import Flask, render_template, redirect, flash, url_for, request
 from flask_bootstrap import Bootstrap
 from flask_sse import sse
 
-from forms import SimpleBot, StopLossBot
+from forms import OrderBot, StopLossBot
 
 import utils
 from guiutils import *
@@ -28,6 +28,7 @@ panel_tickers = []
 # --------- flash, streams, ... ---------
 @app.context_processor
 def inject_common_data():
+    ''' sends ticker, and icons global var to all templates '''
     panel_tickers = []
     for k in sorted(rds.scan(match="cb:mkt:tick:*", count=100)[1]):
         pair = k.split(":")[3]
@@ -38,6 +39,8 @@ def inject_common_data():
 def get_status():
     for m in  rds.scan_iter(match="gui:message:*"):
         jmsg = rds.get(m)
+        if (jmsg is None):
+            continue
         msg = json.loads(jmsg)
         rds.delete(m)
         flash(msg['data'], msg['type'])
@@ -87,6 +90,11 @@ def bot_stop(uid):
     rds.rpush("trader:action", json.dumps({"type": "stop_bot", "uid": uid}))
     return redirect(url_for("bots"))
 
+@app.route("/bot_pause/<uid>", methods=["GET"])
+def bot_pause(uid):
+    rds.rpush("trader:action", json.dumps({"type": "pause_bot", "uid": uid}))
+    return redirect(url_for("bots"))
+
 @app.route("/bots_stopall", methods=["GET"])
 def bots_stopall():
     rds.rpush("trader:action", json.dumps({"type": "stop_all_bots"}))
@@ -94,13 +102,13 @@ def bots_stopall():
 
 @app.route("/bot/new_simple", methods=["GET", "POST"])
 def new_simplebot():
-    form = SimpleBot()
+    form = OrderBot()
     # TODO: Put this 2 blocks in 2 functions (pair, cambista)
     form.pair.choices = [(p,p) for p in pairs]
     form.cambista.choices = []
     for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
         cambista_info = json.loads(rds.get(k))
-        form.cambista.choices.append((k, "{} ({})".format(cambista_info['cambista_name'], cambista_info['role'])))
+        form.cambista.choices.append((k, "{} ({})".format(cambista_info['name'], cambista_info['role'])))
     return render_template("bots/new_simple.html", form=form)
 
 @app.route("/bot_dup/<uid>", methods=["GET", "POST"])
@@ -113,39 +121,39 @@ def bot_dup(uid):
             return "Bot's uid '%s' found neither in trader:rb: nor trader:hb" % uid
     bot = json.loads(bot)
     # get bot type
-    if (bot['type'] == "simple"):
-        form = SimpleBot()
+    if (bot['type'] == "orderbot"):
+        form = OrderBot()
         form.cambista.choices = []
         # TODO: Put pre-fill in Form constructor
         # TODO: Put this 2 blocks in 2 functions (pair, cambista)
         form.pair.choices = [(p,p) for p in pairs]
         for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
             cambista_info = json.loads(rds.get(k))
-            form.cambista.choices.append((k, "{} ({})".format(cambista_info['cambista_name'], cambista_info['role'])))
+            form.cambista.choices.append((k, "{} ({})".format(cambista_info['name'], cambista_info['role'])))
         form.bot_name.data = bot['name']
-        form.pair.data = bot['pair']
-        form.instructions_loop.data = bot['instructions_loop']
+        form.pair.data = bot['instruction_book']['pair']
+        form.instructions_loop.data = bot['instruction_book']['loop']
         form.cambista.data = bot['cambista_link']
-        form.size.data = bot["instructions"][0]["size"]
-        if (bot["instructions"][0]['side'] == "sell"): 
-            form.sell_at.data = bot["instructions"][0]['price'] 
-            form.buy_at.data = bot["instructions"][1]['price'] 
+        form.size.data = bot['instruction_book']["instructions"][0]["size"]
+        if (bot['instruction_book']["instructions"][0]['side'] == "sell"): 
+            form.sell_at.data = bot['instruction_book']["instructions"][0]['price'] 
+            form.buy_at.data = bot['instruction_book']["instructions"][1]['price'] 
         else:
-            form.buy_at.data = bot["instructions"][0]['price'] 
-            form.sell_at.data = bot["instructions"][1]['price'] 
+            form.buy_at.data = bot['instruction_book']["instructions"][0]['price'] 
+            form.sell_at.data = bot['instruction_book']["instructions"][1]['price'] 
     else:
         return("Sorry, type {} not implemented yet.".format(bot['type'])) 
     return render_template("bots/new_simple.html", form=form)
 
 @app.route("/bot_add", methods=["POST"])
 def bot_add():
-    form = SimpleBot()
+    form = OrderBot()
     # TODO: Put this 2 blocks in 2 functions (pair, cambista)
     form.pair.choices = [(p,p) for p in pairs]
     form.cambista.choices = []
     for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
         cambista_info = json.loads(rds.get(k))
-        form.cambista.choices.append((k, "{} ({})".format(cambista_info['cambista_name'], cambista_info['role'])))
+        form.cambista.choices.append((k, "{} ({})".format(cambista_info['name'], cambista_info['role'])))
     if form.validate_on_submit():
         bot = {}
         instruction1 = { 
@@ -158,14 +166,16 @@ def bot_add():
         else:
             instructions = [ instruction1, instruction2 ]
 
-        bot = {"type": "simple",
+        bot = {"type": "orderbot",
                 "name": form.bot_name.data,
-                "instructions_loop": form.instructions_loop.data,
-                "pair": form.pair.data,
                 "cambista_link": form.cambista.data,
-                "cambista_title": dict(form.cambista.choices).get(form.cambista.data),
-                "cambista_icon": json.loads(rds.get(form.cambista.data))['cambista_icon'],
-                "instructions" : instructions
+                #"cambista_title": dict(form.cambista.choices).get(form.cambista.data),
+                #"cambista_icon": json.loads(rds.get(form.cambista.data))['cambista_icon'],
+                "instruction_book": {
+                    "loop": form.instructions_loop.data,
+                    "pair": form.pair.data,
+                    "instructions" : instructions
+                }
               }
         rds.lpush("trader:build", str(json.dumps(bot)))
         return redirect(url_for("bots"))

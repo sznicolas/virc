@@ -1,85 +1,193 @@
-import os, datetime, copy
+import os, datetime, copy, json
+from utils import Cambista
 # import dateutil.parser
 
-class SimpleBot(object):
-    def __init__(self, bot):
+rbs = "trader:rb" # redis hash containing running bot status
+hbs = "trader:hb" # redis hash containing history of ended bot status
+
+class Bot(object):
+    def __init__(self, bot, rds):
+        self.rds  = rds
         self.name = bot['name']
-        self.pid = os.getpid()
-        self.uid = bot['uid']
-        self.pair = bot['pair']
-        self.cambista_link  = bot['cambista_link']
-        self.cambista_title = bot.get('cambista_title')
-        self.cambista_icon  = bot.get('cambista_icon')
+        self.pid  = os.getpid()
+        self.uid  = bot['uid']
         self.status = "running"
         self.start_date = datetime.datetime.now()
-        self.instructions_loop = bot.get('instructions_loop')
-        self.instructions_index = bot.get('instructions_index', 0)
-        self.instructions_count = bot.get('instructions_count', 0)
-        self.instructions_history = []
-        if bot.get("instructions_history"):
-            for instruction in bot['instructions_history']:
-                self.instructions_history.append(Instruction(instruction))
-        self.instructions = []
-        for instruction in bot['instructions']:
-            if not "pair" in instruction:
-                instruction['pair'] = self.pair
-            self.instructions.append(Instruction(instruction))
-        if bot.get('current_instruction'):
-            self.current_instruction = Instruction(bot.get('current_instruction'))
-        else:
-            self.current_instruction = copy.deepcopy(self.instructions[self.instructions_index])
-        self.current_instruction.set_uid(self.uid)
+        self.instruction_book = InstructionsBook(bot.get('instruction_book'), self.uid)
+        self.tprofit = bot.get("tprofit")
+        self.tpprofit = bot.get("tpprofit")
 
     def to_dict(self):
         return {
             "name": self.name,
             "pid": self.pid,
             "uid": self.uid,
-            "type": "simple",
+            "type": self.type,
             "status": self.status,
-            "pair": self.pair,
-            "cambista_link": self.cambista_link,
-            "cambista_title": self.cambista_title,
-            "cambista_icon": self.cambista_icon,
             "start_date": self.start_date.isoformat(),
-            "instructions_loop": self.instructions_loop,
-            "instructions_index": self.instructions_index,
-            "instructions_count": self.instructions_count,
-            "instructions": [ i.to_dict() for i in self.instructions ],
-            "instructions_history": [ i.to_dict() for i in self.instructions_history ],
-            "current_instruction": self.current_instruction.to_dict()
+            "instruction_book": self.instruction_book.to_dict(),
+            "tprofit" : self.tprofit,
+            "tpprofit" : self.tpprofit
             }
+
+    def iter_instructions(self):
+        return self.instruction_book.iter_instructions()
 
     def get_status(self):
         return self.status
 
-    def get_cambista_link(self):
-        return self.cambista_link
-
-    def iter_instructions(self):
-        while (self.instructions_index < len(self.instructions)):
-            yield self.current_instruction
-            self.instructions_history.append(self.current_instruction)
-            self.instructions_index += 1
-            self.instructions_count += 1
-            if (self.instructions_index >= len(self.instructions)):
-                if (self.instructions_loop is True):
-                    self.instructions_index = 0
-                else:
-                    raise StopIteration
-            self.current_instruction = copy.deepcopy(self.instructions[self.instructions_index])
-            self.current_instruction.set_uid(self.uid)
-
     def get_current_instruction(self):
-        return self.current_instruction.to_dict()    
+        return self.instruction_book.current_instruction.to_dict()    
+
+    def cancel_current_instruction(self):
+        self.instruction_book.current_instruction.cancel()
 
     def end(self, status="ended"):
         self.status = status
 
+    def update_blueprint(self):
+        if (self.get_status() == "running"):
+            channel = rbs + ":" + self.uid
+        else:
+            channel = hbs + ":" + self.uid
+            self.rds.delete(rbs + ":" + self.uid)
+        self.rds.delete(channel)
+        self.rds.set(channel, json.dumps(self.to_dict()))
+
     def __repr__(self):
         return "Bot '{}': ({})".format(self.name, str(self.to_dict()))
 
-class Instruction(object):
+class OrderBot(Bot):
+    def __init__(self, bot, rds):
+        super(OrderBot, self).__init__(bot, rds)
+        self.type = bot.get("type", "simple")
+        self._set_theorical_profit()
+        self.cambista_link  = bot['cambista_link']
+        self.get_cambista_def()
+
+    def get_cambista_def(self):
+        # get cambista channels
+        self.cambista = Cambista(json.loads(self.rds.get(self.cambista_link)))
+
+    def cancel_order(self):
+        # send cancel order before the others with rpush
+        self.rds.rpush(self.cambista.c_in(), json.dumps( { 'type': "cancel_order",
+                "order_id": self.get_order_id(), 'uid': self.uid } ))
+        self.rds.brpop(self.cambista.c_cancel_order() + self.uid)[1]
+        self.cancel_current_instruction()
+
+    def send_order(self):
+        res = self.rds.lpush(self.cambista.c_in(), json.dumps(self.get_current_instruction()))
+        # wait order_id
+        msg = self.rds.brpop(self.cambista.c_new_order() + self.uid)
+        msg = json.loads(msg[1])
+        if ( msg['type'] == "refused"):
+            self.error = msg
+            return None
+        return msg['order_id']
+
+    def set_order_id(self,order_id):
+        self.instruction_book.current_instruction.set_order_id(order_id)
+
+    def wait_order_update(self):
+        msg = {}
+        try:
+            msg = json.loads(self.rds.brpop(self.cambista.c_order_done() + self.get_order_id())[1])
+        except Exception as e:
+            print "Error probably due to redis's brpop while exiting. '%s'" % e
+        return msg
+
+    def get_order_status(self):
+        msg = ""
+        self.rds.lpush(self.cambista.c_in(), 
+                json.dumps({'type' : 'get_order_status', 'order_id': self.get_order_id(), 'uid': self.uid}))
+        try:
+            msg = json.loads(self.rds.brpop(self.cambista.c_order_status() +  self.get_order_id())[1])
+        except Exception as e :
+            print "Error probably due to redis's brpop while exiting"
+        return msg
+
+    def get_order_id(self):
+        return self.instruction_book.current_instruction.get_order_id()
+    
+    def set_order_filled(self, waited_order_id):
+        return self.instruction_book.current_instruction.set_order_filled(waited_order_id)
+
+    def _set_theorical_profit(self):
+        s0 = self.instruction_book.instructions[0].price * self.instruction_book.instructions[0].size 
+        s1 = self.instruction_book.instructions[1].price * self.instruction_book.instructions[1].size 
+        if (self.instruction_book.instructions[0].side == 'buy'):
+            self.tprofit = s1 - s0
+            self.tpprofit = self.tprofit * 100 / s0
+        else:
+            self.tprofit = s0 - s1
+            self.tpprofit = self.tprofit * 100 / s1
+
+    def to_dict(self):
+        d = super(OrderBot, self).to_dict()
+        d['type'] = self.type
+        d["cambista_link"]  = self.cambista_link
+        d["cambista"] = self.cambista.to_dict()
+        return d
+
+class InstructionsBook(object):
+    def __init__(self, ibk, uid):
+        self.loop  = ibk.get("loop")
+        self.index = ibk.get("index", 0)
+        self.count = ibk.get("count", 0)
+        self.pair  = ibk.get('pair') #default pair if not set in an instruction.
+        self.uid   = uid
+        self.history = []
+        self.instructions = []
+        if ibk.get("history"):
+            self._load_instructions(ibk['history'], self.history)
+        self._load_instructions(ibk['instructions'], self.instructions)
+        if ibk.get('current_instruction'):
+            self.current_instruction = self._create_instruction(ibk['current_instruction'])
+        else:
+            self.current_instruction = copy.deepcopy(self.instructions[self.index])
+        self.current_instruction.set_uid(self.uid)
+
+    def to_dict(self):
+        return {
+                "loop": self.loop,
+                "index": self.index,
+                "count": self.count,
+                "uid"  : self.uid,
+                "pair" : self.pair,
+                "instructions": [ i.to_dict() for i in self.instructions ],
+                "history": [ i.to_dict() for i in self.history ],
+                "current_instruction": self.current_instruction.to_dict()
+                }
+
+    def _load_instructions(self, source, dest):
+        for instruction in source:
+            if not "pair" in instruction:
+                instruction['pair'] = self.pair
+            dest.append(self._create_instruction(instruction))
+
+    def _create_instruction(self, instruction):
+        if instruction['type'] == "order":
+            return OrderInstruction(instruction)
+        else:
+            raise Exception("instruction['type'] not implemented. was: '{}'".format(instruction['type']))
+
+    def iter_instructions(self):
+        while (self.index < len(self.instructions)):
+            yield self.current_instruction
+            self.history.append(self.current_instruction)
+            self.index += 1
+            self.count += 1
+            if (self.index >= len(self.instructions)):
+                if (self.loop is True):
+                    self.index = 0
+                else:
+                    raise StopIteration
+            self.current_instruction = copy.deepcopy(self.instructions[self.index])
+            self.current_instruction.set_uid(self.uid)
+
+
+class OrderInstruction(object):
     def __init__(self, instruction):
         self.size = instruction['size']
         self.side = instruction['side']
@@ -134,5 +242,5 @@ class Instruction(object):
         self.status = "canceled"
 
     def __repr__(self):
-        return "Instruction ({})".format(str(self.to_dict()))
+        return "OrderInstruction ({})".format(str(self.to_dict()))
 

@@ -22,6 +22,14 @@ channels = {'in'            : cambista_channel + ":orders",
 cambista_role = "real"
 cambista_name = "Coinbase Pro"
 cambista_icon = "fas fa-landmark"
+cambista = utils.Cambista(
+        {
+            "role": cambista_role,
+            "name": cambista_name,
+            "icon": cambista_icon,
+            "channels": channels
+        }
+)
 
 def rw_auth():
     creds_rw = json.loads(open(cb_rw_keys).read())
@@ -171,14 +179,7 @@ logging.info("Cambista is ready")
 
 # set cambista info
 regkey = os.environ.get("CAMBISTA_CHANNELS") + cambista_channel
-rds.set(regkey, json.dumps(
-        {
-            "role": cambista_role,
-            "cambista_name": cambista_name,
-            "cambista_icon": cambista_icon,
-            "channels": channels
-        }
-    ))
+rds.set(regkey, json.dumps(cambista.to_dict()))
 
 while (True):
     # Workaround disconnect after 60sec of inactivity:

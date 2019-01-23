@@ -8,7 +8,7 @@ import utils
 
 logging.basicConfig(format='%(asctime)s %(message)s', filename='/logs/trader.log', level=logging.NOTSET)
 
-waittime = 5 # looptime, in seconds.
+waittime = 1 # looptime, in seconds.
 
 def check_bots():
     """ check if all bots are still running """
@@ -41,6 +41,16 @@ def check_bots():
             print "Not in 'running_bots',move '%s' to trader:hb" % uid
             rds.set("trader:hb:" + uid, json.dumps(rb[uid]))
     
+def pause_bot(uid):
+    if (running_bots.get(uid) is None):
+        logging.error("In stop_bot(%s): uid not found" % uid)
+        return
+    proc = running_bots[uid]    
+    logging.warning("os.kill(" + str(proc.pid) + ", signal.SIGUSR1)")
+    os.kill(proc.pid, signal.SIGUSR1)
+    proc.wait()
+    running_bots.pop(uid)
+
 def stop_bot(uid):
     if (running_bots.get(uid) is None):
         logging.error("In stop_bot(%s): uid not found" % uid)
@@ -102,4 +112,6 @@ while True:
                 stop_all_bots()
             elif (recv['type'] == "stop_bot"):
                 stop_bot(recv['uid'])
+            elif (recv['type'] == "pause_bot"):
+                pause_bot(recv['uid'])
    # time.sleep(waittime)

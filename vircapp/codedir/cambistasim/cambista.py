@@ -21,6 +21,14 @@ channels = {'in'            : cambista_channel + ":orders",
 cambista_role = "sim"
 cambista_name = "Coinbase Emulated"
 cambista_icon = "fas fa-gamepad"
+cambista = utils.Cambista(
+        {
+            "role": cambista_role,
+            "name": cambista_name,
+            "icon": cambista_icon,
+            "channels": channels
+        }
+)
 
 class OrderBook(object):
     def __init__(self, redis_connection):
@@ -29,7 +37,7 @@ class OrderBook(object):
         self._get_orders()
 
     def buy(self, msg):
-        order_id = str(uuid.uuid4())
+        order_id = str(uuid.uuid4())[:8]
         self.add_order({
             'pair': msg['pair'], 'price': msg['price'],
             'size': msg['size'], 'order_id': order_id,
@@ -38,7 +46,7 @@ class OrderBook(object):
         return order_id
 
     def sell(self, msg):
-        order_id = str(uuid.uuid4())
+        order_id = str(uuid.uuid4())[:8]
         self.add_order({
             'pair': msg['pair'], 'price': msg['price'],
             'size': msg['size'], 'order_id': order_id,
@@ -92,13 +100,7 @@ logging.info("Started.")
 orderbook = OrderBook(redis_connection=rds)
 
 regkey = os.environ.get("CAMBISTA_CHANNELS") + cambista_channel
-rds.set(regkey, json.dumps(
-    {
-        "role": cambista_role,
-        "cambista_name": cambista_name,
-        "cambista_icon": cambista_icon,
-        "channels": channels
-    } ))
+rds.set(regkey, json.dumps(cambista.to_dict()))
 
 while (True):
     # declare myself as running

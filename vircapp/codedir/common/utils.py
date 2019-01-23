@@ -43,7 +43,7 @@ def virc_publish(message, category, level='info'):
     rds.publish("virc:pubsub", fmessage)
     print "*** DBG virc_publish: %s" % fmessage
 
-class Pairs():
+class Pairs(object):
     """ pairs exchanged we want to get are defined in docker-compose.yml 
     a conversion is needed since mongodb collections are in lowercase, without dash sign - """
     def __init__(self, pairs):
@@ -62,6 +62,36 @@ class Pairs():
 
     def __getitem__(self, index):
         return self.pair[index]
+
+class Cambista(object):
+    def __init__(self, camb):
+        self.channels = camb['channels']
+        self.icon     = camb['icon']
+        self.name     = camb['name']
+        self.role     = camb['role']
+
+    def to_dict(self):
+        return {
+            "role": self.role,
+            "name": self.name,
+            "icon": self.icon,
+            "channels": self.channels
+        }
+
+    def c_in(self):
+        return self.channels['in']
+
+    def c_new_order(self):
+        return self.channels['new_order']
+
+    def c_order_done(self):
+        return self.channels['order_done']
+
+    def c_order_status(self):
+        return self.channels['order_status']
+
+    def c_cancel_order(self):
+        return self.channels['cancel_order']
 
 
 if __name__ == "__main__":
