@@ -16,7 +16,7 @@ def redis_connect():
     try:
         rds.ping()
     except redis.exceptions.ConnectionError as ce:
-        print "No redis connection to {}:{}".format(redissrv, redisport)
+        print("No redis connection to {}:{}".format(redissrv, redisport))
         raise 
     return rds
 
@@ -41,7 +41,7 @@ def virc_publish(message, category, level='info'):
             'level': level }
         } )
     rds.publish("virc:pubsub", fmessage)
-    print "*** DBG virc_publish: %s" % fmessage
+    print("*** DBG virc_publish: %s" % fmessage)
 
 class Pairs(object):
     """ pairs exchanged we want to get are defined in docker-compose.yml 

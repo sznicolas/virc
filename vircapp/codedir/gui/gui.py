@@ -1,10 +1,10 @@
-import time, json, os
+import time, json, os, glob
 
 from flask import Flask, render_template, redirect, flash, url_for, request
 from flask_bootstrap import Bootstrap
 from flask_sse import sse
 
-from forms import OrderBot, StopLossBot
+from forms import OrderBot, StopLossBot, CondBot
 
 import utils
 from guiutils import *
@@ -13,6 +13,7 @@ rds = utils.redis_connect()
 
 # TODO: get this in redis
 pairs = os.environ['pairs'].split()
+graph_path = os.environ['GRAPHPATH']
 
 app = Flask(__name__)
 Bootstrap(app)
@@ -54,6 +55,18 @@ def root():
       pair = k.split(":")[3]
       tickers[pair] = rds.get(k)
     return render_template("index.html", tickers=tickers)
+
+@app.route("/graphs/<pair>", methods=["GET"])
+def graphs(pair):
+    divs = ""
+    scripts = ""
+    for divfile in sorted(glob.glob("{}/{}*.div".format(graph_path, pair))):
+        with open(divfile) as f:
+            divs += f.read()
+    for scriptfile in sorted(glob.glob("{}/{}*.script".format(graph_path, pair))):
+        with open(scriptfile) as f:
+            scripts += f.read()
+    return render_template("graphs.html", pair=pair, divs=divs, scripts=scripts)
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -99,17 +112,6 @@ def bot_pause(uid):
 def bots_stopall():
     rds.rpush("trader:action", json.dumps({"type": "stop_all_bots"}))
     return render_template("bots.html")
-
-@app.route("/bot/new_simple", methods=["GET", "POST"])
-def new_simplebot():
-    form = OrderBot()
-    # TODO: Put this 2 blocks in 2 functions (pair, cambista)
-    form.pair.choices = [(p,p) for p in pairs]
-    form.cambista.choices = []
-    for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
-        cambista_info = json.loads(rds.get(k))
-        form.cambista.choices.append((k, "{} ({})".format(cambista_info['name'], cambista_info['role'])))
-    return render_template("bots/new_simple.html", form=form)
 
 @app.route("/bot_dup/<uid>", methods=["GET", "POST"])
 def bot_dup(uid):
@@ -192,6 +194,26 @@ def bot_continue(uid):
     rds.lpush("trader:build", str(json.dumps(bot)))
     return redirect(request.referrer)
 
+# ------ new bots 
+@app.route("/bot/new_simple", methods=["GET", "POST"])
+def new_simplebot():
+    form = OrderBot()
+    # TODO: Put this 2 blocks in 2 functions (pair, cambista)
+    form.pair.choices = [(p,p) for p in pairs]
+    form.cambista.choices = []
+    for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
+        cambista_info = json.loads(rds.get(k))
+        form.cambista.choices.append((k, "{} ({})".format(cambista_info['name'], cambista_info['role'])))
+    return render_template("bots/new_simple.html", form=form)
+
+@app.route("/bot/new_condbot", methods=["GET", "POST"])
+def new_condbot():
+    form = CondBot()
+    # TODO: Put this 2 blocks in 2 functions (pair, cambista)
+    form.pair.choices = [(p,p) for p in pairs]
+    form.cambista.choices = get_cambista_choices(rds)
+    return render_template("bots/new_condbot.html", form=form)
+
 @app.route("/new_stop_loss", methods=["GET", "POST"])
 def new_stop_loss():
     form = StopLossBot()
@@ -221,6 +243,7 @@ def redis_ls():
         if ( k.startswith("cb:mkt:change:")):
             changes.append({'name': k, 'pair': k.split(":")[-1], "value": json.loads(rds.get(k))})
         elif (k.startswith("cb:mkt:tick")):
+#        if (k.startswith("cb:mkt:tick")):
             tickers.append({'name': k, 'pair': k.split(":")[-1], "price": rds.get(k)})
         elif k.startswith("trader:rb"):
             bot = json.loads(rds.get(k))

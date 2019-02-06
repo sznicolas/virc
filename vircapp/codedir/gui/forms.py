@@ -3,9 +3,12 @@ from wtforms import StringField, SubmitField, BooleanField, SelectField, Decimal
 from wtforms.validators import DataRequired, NumberRange, InputRequired
 
 
-class OrderBot(FlaskForm):
+class BotHeader(FlaskForm):
     bot_name = StringField('Bot name', validators=[InputRequired()])
     pair = SelectField('Pair')
+    submit = SubmitField('Create and run')
+
+class OrderBot(BotHeader):
     instructions_loop = BooleanField('Loop')
     #sim_mode = BooleanField('Simulation mode')
     cambista = SelectField('Cambista')
@@ -13,12 +16,14 @@ class OrderBot(FlaskForm):
     buy_at = DecimalField('Buy at', id='f_buy_at', places=2, validators=[InputRequired()])
     sell_at = DecimalField('Sell at', id='f_sell_at', places=2, validators=[InputRequired(), NumberRange(min=0)])
     size = DecimalField("Size", places=8, id='f_size', validators=[InputRequired(), NumberRange(min=0)])
-    submit = SubmitField('Create and run')
 
-class StopLossBot(FlaskForm):
-    bot_name = StringField('Bot name', validators=[InputRequired()])
+class StopLossBot(BotHeader):
     bypair = BooleanField('By Pair')
-    pair   = SelectField('Pair')
     bybot  = BooleanField('By Bot') 
-    submit = SubmitField('Create and run')
 
+class CondBot(OrderBot):
+    cond1_sel1 = SelectField("cond1_sel1")
+    cond1_sel2 = SelectField("cond1_sel2")
+    cond1_op1  = SelectField("cond1_op1")
+    cond1_sel3  = SelectField("cond1_sel3")
+    cond1_sel4  = SelectField("cond1_sel4")

@@ -1,3 +1,4 @@
+import json
 global icons 
 icons = {
         "loop"     : "fas fa-redo",
@@ -11,7 +12,12 @@ icons = {
         "config"   : "fas fa-cog"
 }
 
-
+def get_cambista_choices(rds):
+    res = []
+    for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
+        cambista_info = json.loads(rds.get(k))
+        res.append((k, "{} ({})".format(cambista_info['name'], cambista_info['role'])))
+    return res
 if __name__ == "__main__":
     pass
 

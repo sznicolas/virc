@@ -5,14 +5,9 @@
 <script type="text/javascript" src="https://cdn.pydata.org/bokeh/release/bokeh-1.0.4.min.js"></script>
 
 <div class="container">
-		<ul>
-		{% for pair, value in tickers.iteritems() %}
-		<li><a href='{{ url_for("graphs", pair=pair) }}'>{{pair}}</a> {{ value }}</li>
-		{% endfor %}
-		</ul>
-		{% for f in ls %}
-		<p>{{ f }}</p>
-		{% endfor %}
+		<h2>{{pair}}</h2>
+		{{ divs | safe }}
+		{{ scripts | safe }}
 	</div>
 </div>
 {% endblock content %}

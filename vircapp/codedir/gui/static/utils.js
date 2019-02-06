@@ -20,6 +20,7 @@ function messagehandler(event) {
 
 // updates data in the ticker panel
 function tickerhandler(event) {
+	//data = event.data; 
 	data = JSON.parse(event.data);
 	ticker_stats[data.ticker.pair] = data;
 
@@ -72,16 +73,16 @@ function fill_ticker_details(pair){
 	$("#ticker-detail-tbody").empty();
 	$("#ticker-detail-pair").text(stats.ticker.pair);
 	for ( k in stats) { 
-		if ( k == "ticker")   { continue; }
+		if ( ! k.startsWith("mob_"))   { continue; }
 		if (stats[k].oc > 0) {
 				bgstyle = "background-color: darkGreen;";
 		} else if (stats[k].oc < 0) {
 				bgstyle = "background-color: darkRed;";
 		}
-		if ( stats[k].volume >= 10) {
-				volume = Math.round(stats[k].volume);
+		if ( stats[k].vol >= 10) {
+				volume = Math.round(stats[k].vol);
 		} else {
-				volume = stats[k].volume.toFixed(2);
+				volume = stats[k].vol.toFixed(2);
 		}
 		if (stats[k].range < 1){
 				range = Math.round(stats[k].range.toFixed(4) * 100) / 100 ;
@@ -92,7 +93,7 @@ function fill_ticker_details(pair){
 				"</th><td onclick='fill_buy_low(this)'>" + stats[k].low +
 				"</td><td onclick='fill_sell_high(this)'>" + stats[k].high + "</td><td>" + 
 				volume + "</td><td>" + range +
-				"</td><td>" + Math.round(stats[k].oc.toFixed(2) * 100/100) + "%</td></tr>";
+				"</td><td>" + Math.round(stats[k].oc.toFixed(2) * 100) / 100 + "%</td></tr>";
 		$(html).appendTo('#ticker-detail-tbody');
 	}
 }

@@ -44,6 +44,8 @@ services:
             - conf.env
         networks:
             - back
+        volumes:
+            - ../analyzes:/analyzes
 
     gui:
         build: 
@@ -58,6 +60,8 @@ services:
             - front
         ports:
             - "5000:5000"
+        volumes:
+            - ../analyzes:/analyzes
 
     trader:
         build: 

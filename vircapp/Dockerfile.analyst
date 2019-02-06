@@ -2,13 +2,21 @@ FROM ubuntu:latest
 
 RUN apt-get update && \
 	echo $TZ > /etc/timezone     && \
-	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-websocket python-pip tzdata vim && \
-        apt-get clean all && \
-	pip install --no-cache-dir redis hiredis python-dateutil pymongo
+	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-websocket python-pip \
+		python3 python3-pandas python3-pip python3-hiredis python3-pymongo \
+		tzdata wget vim && \
+    apt-get clean all
+#	pip install --no-cache-dir redis hiredis python-dateutil pymongo
+
+#RUN cd /tmp/ ; wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
+#	tar zvxf ta-lib-0.4.0-src.tar.gz && cd ta-lib && ./configure --prefix=/usr && make install && \
+#	 pip3 install TA-lib
+
+RUN pip3 install --no-cache-dir bokeh pandas pymongo redis hiredis python-dateutil 
 
 COPY codedir/analyst /code/
 COPY codedir/common /code/
 
 WORKDIR /code/
 
-CMD ["python","-u","/code/mkstats.py"]
+CMD ["python3","-u","/code/analyst.py"]
