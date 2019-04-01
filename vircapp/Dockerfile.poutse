@@ -1,0 +1,18 @@
+FROM ubuntu:latest
+
+RUN apt-get update && \
+	echo $TZ > /etc/timezone     && \
+	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-pip python3 python3-pip tzdata cron vim && \
+        apt-get clean all && \
+	pip3 install --no-cache-dir redis hiredis python-dateutil
+
+COPY codedir/common  /code/
+COPY codedir/poutse/ /code/
+COPY codedir/poutse/redis_workaround /etc/cron.d/
+#RUN echo 'cd /code ; ./redis_unicorn_workaround.py' >> /etc/periodic/hourly/redis_unicorn_workaround.sh &&\
+#    chmod a+x  /etc/periodic/hourly/redis_unicorn_workaround.sh &&\ 
+#    cp  /etc/periodic/hourly/redis_unicorn_workaround.sh /etc/periodic/15min/ 
+
+#wORKDIR /code/
+
+CMD ["cron","-f"]
