@@ -31,6 +31,13 @@ cambista = utils.Cambista(
         }
 )
 
+def set_quote_increment(wsc, pairs):
+    quote_increments = {}
+    for l in wsc.get_products():
+        if l['id'] in pairs:
+            quote_increments[l['id']] = l['quote_increment'][::-1].find('.')
+    return quote_increments
+
 def rw_auth():
     creds_rw = json.loads(open(cb_rw_keys).read())
     c = cbpro.AuthenticatedClient(creds_rw["key"], creds_rw["api_secret"], creds_rw['passphrase'])
@@ -78,7 +85,7 @@ class myWebsocketClient(cbpro.WebsocketClient):
 def cb_buy(msg):
     recv = auth_client.place_limit_order(product_id=msg['pair'],
                               side='buy',
-                              price=msg['price'],
+                              price=round(msg['price'], quote_increments[msg['pair']]),
                               post_only=msg.get("post_only", True),
                               size=msg['size'])
     print recv
@@ -87,7 +94,7 @@ def cb_buy(msg):
 def cb_sell(msg):
     recv = auth_client.place_limit_order(product_id=msg['pair'],
                               side='sell',
-                              price=msg['price'],
+                              price=round(msg['price'], quote_increments[msg['pair']]),
                               post_only=msg.get("post_only", True),
                               size=msg['size'])
     print recv
@@ -104,6 +111,7 @@ def cb_cancel_order(order_id):
 
 def cb_send_order(order_msg):
     """ sends the order to cb's API, with retries. If unreachable, republish the received message to itself """
+    auth_client = rw_auth()
     try:
         # Send buy/sell order
         if (order_msg['type'] == "order"):
@@ -174,6 +182,7 @@ except Exception as e:
     #sys.exit(78)
     sys.exit(0) # not restarted by docker-compose
 
+quote_increments = set_quote_increment(auth_client, pairs)
 wsClient.start()
 logging.info("Cambista is ready")
 
@@ -207,67 +216,3 @@ while (True):
 logging.info("End")
 wsClient.close()
 
-""" messages
-{u'user_id': u'cccccccccccccccccccccccc', u'product_id': u'BTC-EUR', u'sequence': 4665914249, u'taker_order_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'profile_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'price': u'5644.50000000', u'trade_id': 16459221, u'maker_user_id': u'cccccccccccccccccccccccc', u'time': u'2018-10-25T14:31:57.526000Z', u'maker_order_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'maker_profile_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'type': u'match', u'side': u'buy', u'size': u'0.05000000'}
-{
-    "maker_order_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "maker_profile_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "maker_user_id": "cccccccccccccccccccccccc", 
-    "price": "5644.50000000", 
-    "product_id": "BTC-EUR", 
-    "profile_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "sequence": 4665914249, 
-    "side": "buy", 
-    "size": "0.05000000", 
-    "taker_order_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "time": "2018-10-25T14:31:57.526000Z", 
-    "trade_id": 16459221, 
-    "type": "match", 
-    "user_id": "cccccccccccccccccccccccc"
-}
-{u'user_id': u'cccccccccccccccccccccccc', u'product_id': u'BTC-EUR', u'remaining_size': u'0', u'sequence': 4665914250, u'order_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'price': u'5644.50000000', u'profile_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'reason': u'filled', u'time': u'2018-10-25T14:31:57.526000Z', u'type': u'done', u'side': u'buy'}
-{
-    "order_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "price": "5644.50000000", 
-    "product_id": "BTC-EUR", 
-    "profile_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "reason": "filled", 
-    "remaining_size": "0", 
-    "sequence": 4665914250, 
-    "side": "buy", 
-    "time": "2018-10-25T14:31:57.526000Z", 
-    "type": "done", 
-    "user_id": "cccccccccccccccccccccccc"
-}
-
-
-
-{u'client_oid': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'user_id': u'cccccccccccccccccccccccc', u'order_type': u'limit', u'sequence': 4665948365, u'order_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'price': u'5666.64000000', u'profile_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'product_id': u'BTC-EUR', u'time': u'2018-10-25T14:38:45.282000Z', u'type': u'received', u'side': u'sell', u'size': u'0.05000000'}
-{
-    "client_oid": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "order_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "order_type": "limit", 
-    "price": "5666.64000000", 
-    "product_id": "BTC-EUR", 
-    "profile_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "sequence": 4665948365, 
-    "side": "sell", 
-    "size": "0.05000000", 
-    "time": "2018-10-25T14:38:45.282000Z", 
-    "type": "received", 
-    "user_id": "cccccccccccccccccccccccc"
-}
-{u'user_id': u'cccccccccccccccccccccccc', u'product_id': u'BTC-EUR', u'remaining_size': u'0.05000000', u'sequence': 4665948366, u'order_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'price': u'5666.64000000', u'profile_id': u'cccccccc-cccc-cccc-cccc-cccccccccccc', u'time': u'2018-10-25T14:38:45.282000Z', u'type': u'open', u'side': u'sell'}
-{
-    "order_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "price": "5666.64000000", 
-    "product_id": "BTC-EUR", 
-    "profile_id": "cccccccc-cccc-cccc-cccc-cccccccccccc", 
-    "remaining_size": "0.05000000", 
-    "sequence": 4665948366, 
-    "side": "sell", 
-    "time": "2018-10-25T14:38:45.282000Z", 
-    "type": "open", 
-    "user_id": "cccccccccccccccccccccccc"
-}
-"""

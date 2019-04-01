@@ -12,13 +12,17 @@
 		{% if title == "History" %}
 			<div class="row">
 				<div class="col-sm-4">execution_date:</div>
-				<div class="col-sm-8">{{ instruction['filled_date'][:-7] if instruction['filled_date'] else "-" }}</div>
+				<div class="col-sm-8">{{ instruction['execution_date'][:-7] if instruction['execution_date'] else "-" }}</div>
 			</div>
 		{% endif %}
 		<div class="row">
+		{% if instruction['type'] == "order" or instruction['type'] == "order_var" %}
 			<div class="col-sm-2">{{ instruction['side'] }}:</div>
 			<div class="col-sm-4">{{ instruction['size'] }} {{ instruction['pair'][:3] }}</div>
 			<div class="col-md-6">@ {{ instruction['price'] }} {{ instruction['pair'][-3:] + "/" + instruction['pair'][:3]  }}</div>
+		{% elif instruction['type'] == "conditionnal" %}
+			<div class='col'>{{ instruction['rules'] |pjsonlogic }}</div>
+		{% endif %}
 		</div>
 		{% if instruction['wait_filled'] %}
 			<div class="row">

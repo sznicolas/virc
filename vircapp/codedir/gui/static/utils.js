@@ -117,8 +117,8 @@ function fill_sell_high(obj){
 
 $(window).on('beforeunload', function(){
    		flashsse.close();
-		tickersse.close();
 		vircpubsse.close();
+		tickersse.close();
 });
 
 // Confirm with 'confirmation' class

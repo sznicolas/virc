@@ -1,6 +1,7 @@
 import os, datetime, copy, json
 from utils import Cambista
 # import dateutil.parser
+from json_logic import jsonLogic
 
 rbs = "trader:rb" # redis hash containing running bot status
 hbs = "trader:hb" # redis hash containing history of ended bot status
@@ -60,7 +61,7 @@ class Bot(object):
 class OrderBot(Bot):
     def __init__(self, bot, rds):
         super(OrderBot, self).__init__(bot, rds)
-        self.type = bot.get("type", "simple")
+        self.type = bot.get("type", "orderbot")
         self._set_theorical_profit()
         self.cambista_link  = bot['cambista_link']
         self.get_cambista_def()
@@ -77,6 +78,9 @@ class OrderBot(Bot):
         self.cancel_current_instruction()
 
     def send_order(self):
+        if (self.instruction_book.current_instruction.get_type() == "order_var"):
+            mktprice = self.rds.get("cb:mkt:tick:" + self.instruction_book.current_instruction.get_pair())
+            self.instruction_book.current_instruction.set_price(mktprice)
         res = self.rds.lpush(self.cambista.c_in(), json.dumps(self.get_current_instruction()))
         # wait order_id
         msg = self.rds.brpop(self.cambista.c_new_order() + self.uid)
@@ -94,7 +98,7 @@ class OrderBot(Bot):
         try:
             msg = json.loads(self.rds.brpop(self.cambista.c_order_done() + self.get_order_id())[1])
         except Exception as e:
-            print "Error probably due to redis's brpop while exiting. '%s'" % e
+            print("Error probably due to redis's brpop while exiting. '%s'" % e)
         return msg
 
     def get_order_status(self):
@@ -104,7 +108,7 @@ class OrderBot(Bot):
         try:
             msg = json.loads(self.rds.brpop(self.cambista.c_order_status() +  self.get_order_id())[1])
         except Exception as e :
-            print "Error probably due to redis's brpop while exiting"
+            print("Error probably due to redis's brpop while exiting")
         return msg
 
     def get_order_id(self):
@@ -114,6 +118,11 @@ class OrderBot(Bot):
         return self.instruction_book.current_instruction.set_order_filled(waited_order_id)
 
     def _set_theorical_profit(self):
+        if (self.instruction_book.instructions[0].type == "order_var" or 
+                self.instruction_book.instructions[1].type == "order_var"):
+            self.tprofit = None
+            self.tpprofit = None
+            return None
         s0 = self.instruction_book.instructions[0].price * self.instruction_book.instructions[0].size 
         s1 = self.instruction_book.instructions[1].price * self.instruction_book.instructions[1].size 
         if (self.instruction_book.instructions[0].side == 'buy'):
@@ -129,6 +138,21 @@ class OrderBot(Bot):
         d["cambista_link"]  = self.cambista_link
         d["cambista"] = self.cambista.to_dict()
         return d
+
+class CondBot(OrderBot):
+    def __init__(self, bot, rds):
+        super(CondBot, self).__init__(bot, rds)
+        self.type = bot.get("type", "condbot")
+
+    def _set_theorical_profit(self):
+        pass
+    
+    def evaluate_current_instruction(self, indicators):
+        self.instruction_book.current_instruction.evaluate(indicators)
+
+    def cancel_instruction(self):
+        if self.instruction_book.current_instruction.get_type() == "order":
+            self.cancel_order()
 
 class InstructionsBook(object):
     def __init__(self, ibk, uid):
@@ -162,13 +186,17 @@ class InstructionsBook(object):
 
     def _load_instructions(self, source, dest):
         for instruction in source:
-            if not "pair" in instruction:
+            if not "pair" in instruction.keys():
                 instruction['pair'] = self.pair
             dest.append(self._create_instruction(instruction))
 
     def _create_instruction(self, instruction):
         if instruction['type'] == "order":
             return OrderInstruction(instruction)
+        elif instruction['type'] == "order_var":
+            return OrderVarInstruction(instruction)
+        elif instruction['type'] == "conditionnal":
+            return CondInstruction(instruction)
         else:
             raise Exception("instruction['type'] not implemented. was: '{}'".format(instruction['type']))
 
@@ -185,32 +213,37 @@ class InstructionsBook(object):
                     raise StopIteration
             self.current_instruction = copy.deepcopy(self.instructions[self.index])
             self.current_instruction.set_uid(self.uid)
+            self.current_instruction.set_start_date()
 
-
-class OrderInstruction(object):
+class Instruction(object):
     def __init__(self, instruction):
-        self.size = instruction['size']
-        self.side = instruction['side']
-        self.price = instruction['price']
-        self.type = instruction['type']
-        self.pair = instruction['pair']
         self.uid  = instruction.get('uid')
-        self.wait_filled = instruction.get('wait_filled')
-        self.start_date = instruction.get("start_date")
-        self.filled_date = instruction.get("filled_date")
-        self.cancel_date = instruction.get("cancel_date")
-        self.status = instruction.get('status') # "wait_filled"|"canceled" <= with one 'l' !!! |"filled"|None
+        self.type = instruction['type']
+        self.execution_date = instruction.get("execution_date")
+        self.start_date     = instruction.get("start_date")
+        self.cancel_date    = instruction.get("cancel_date")
 
-    def to_dict(self):
-        return { "size": self.size,  "side"  : self.side,
-                "price": self.price, "type"  : self.type,
-                "pair" : self.pair,  "status": self.status,
-                "uid"  : self.uid,
-                "wait_filled": self.wait_filled,
-                "start_date" : self._idate(self.start_date),
-                "filled_date": self._idate(self.filled_date),
-                "cancel_date": self._idate(self.cancel_date)
-                }
+    def set_uid(self, uid):
+        self.uid = uid
+
+    def cancel(self):
+        self.cancel_date = datetime.datetime.now()
+        self.status = "canceled"
+
+    def get_type(self):
+        return self.type
+
+    def set_execution_date(self, execdate=None):
+        if execdate:
+            self.execution_date = execdate
+        else:
+            self.execution_date = datetime.datetime.now()
+
+    def set_start_date(self, startdate=None):
+        if startdate:
+            self.startdate = startdate
+        else:
+            self.startdate = datetime.datetime.now()
 
     def _idate(self, d):
         """ transforms date to isoformat or None if date is not set """
@@ -221,26 +254,73 @@ class OrderInstruction(object):
         else:
             return None
 
+    def get_pair(self):
+        return self.pair
+
+class OrderInstruction(Instruction):
+    def __init__(self, instruction):
+        super(OrderInstruction, self).__init__(instruction)
+        self.size = instruction['size']
+        self.side = instruction['side']
+        self.price = instruction['price']
+        self.pair = instruction['pair']
+        self.wait_filled = instruction.get('wait_filled')
+        self.status = instruction.get('status') # "wait_filled"|"canceled" <= with one 'l' !!! |"filled"|None
+
+    def to_dict(self):
+        return { "size": self.size,  "side"  : self.side,
+                "price": self.price, "type"  : self.type,
+                "pair" : self.pair,  "status": self.status,
+                "uid"  : self.uid,
+                "wait_filled": self.wait_filled,
+                "start_date" : self._idate(self.start_date),
+                "execution_date": self._idate(self.execution_date),
+                "cancel_date": self._idate(self.cancel_date)
+                }
+
     def get_order_id(self):
         return self.wait_filled
 
-    def set_uid(self, uid):
-        self.uid = uid
-
     def set_order_id(self,order_id):
-        self.start_date = datetime.datetime.now()
         self.status = "wait_filled"
         self.wait_filled = order_id
 
     def set_order_filled(self,order_id):
-        self.filled_date = datetime.datetime.now()
+        self.set_execution_date()
         self.status = "filled"
         self.wait_filled = None
 
-    def cancel(self):
-        self.cancel_date = datetime.datetime.now()
-        self.status = "canceled"
-
     def __repr__(self):
         return "OrderInstruction ({})".format(str(self.to_dict()))
+
+class OrderVarInstruction(OrderInstruction):
+    def set_price(self, mktprice):
+        _, val = self.price.split("mkt:")
+        self.price = float(val) + float(mktprice)
+        self.type = "order"
+
+class CondInstruction(Instruction):
+    def __init__(self, instruction):
+        super(CondInstruction, self).__init__(instruction)
+        self.data  = instruction.get('data')
+        self.rules = instruction.get('rules')
+        self.pair  = instruction['pair']
+
+    def to_dict(self):
+        return {
+            "data" : self.data,
+            "rules": self.rules,
+            "pair" : self.pair,
+            "type" : self.type,
+            "start_date" : self._idate(self.start_date),
+            "execution_date": self._idate(self.execution_date),
+            "cancel_date": self._idate(self.cancel_date)
+        }
+
+    def evaluate(self, indicators):
+        for k1 in self.data.keys():
+            for k2 in self.data[k1].keys():
+                self.data[k1][k2] = indicators[k1][k2]
+        self.set_execution_date()
+        return jsonLogic(self.rules, self.data)
 

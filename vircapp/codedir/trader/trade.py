@@ -96,8 +96,11 @@ while True:
                 new_bot_uid = str(uuid.uuid4())[:8]
             recv['uid'] = new_bot_uid
             rds.set("trader:startbot:" + new_bot_uid, json.dumps(recv))
-            res = subprocess.Popen(["./simplebot.py", new_bot_uid])
-            running_bots[new_bot_uid] = res
+            if recv['type'] == "orderbot":
+                child = subprocess.Popen(["./orderbot.py", new_bot_uid])
+            elif recv['type'] == "condbot":
+                child = subprocess.Popen(["./condbot.py", new_bot_uid])
+            running_bots[new_bot_uid] = child
 
     #recmsg = rds.brpop("trader:action", waittime)
     recmsg = rds.rpop("trader:action") # with brpop an error occurs on the client side. 

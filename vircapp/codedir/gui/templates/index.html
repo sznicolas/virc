@@ -5,9 +5,15 @@
 <script type="text/javascript" src="https://cdn.pydata.org/bokeh/release/bokeh-1.0.4.min.js"></script>
 
 <div class="container">
-		<ul>
+		<ul class="list-group">
 		{% for pair, value in tickers.iteritems() %}
-		<li><a href='{{ url_for("graphs", pair=pair) }}'>{{pair}}</a> {{ value }}</li>
+		<li class="list-group-item">
+			<a href='{{ url_for("graphs", pair=pair) }}'>
+					{{pair}}
+			</a>
+			{{ value }}
+			<img src="{{ url_for('custom_static', filename='{}_minigraph_24H.png'.format(pair)) }}">
+		</li>
 		{% endfor %}
 		</ul>
 		{% for f in ls %}

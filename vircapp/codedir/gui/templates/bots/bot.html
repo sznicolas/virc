@@ -35,27 +35,33 @@
 				<div class="col-sm-3 thick">PID:</div><div class="col-sm-9">{{ bot['pid'] }}</div>
 			</div>
 			<div class="row">
-				<div class="col-sm-3 thick">UID:</div><div class="col-sm-9">{{ bot['uid'] }}</div>
+				<div class="col-sm-3 thick">UIDZZ:</div><div class="col-sm-9">{{ bot['uid'] }}</div>
 			</div>
+			{% if bot['tprofit'] %}
 			<div class="row">
-				<div class="col-sm-3 thick">Theorical profit</div><div class="col-sm-9">{{ bot['tprofit'] }} - {{ bot['tpprofit'] // 3 }} %</div>
+				<div class="col-sm-3 thick">Theorical profit</div>
+				<div class="col-sm-9">{{ bot['tprofit'] }} - {{ bot['tpprofit'] // 3 }} %</div>
 			</div>
-								
+			{% endif %}
 			{% if bot['instruction_book']['count'] > 1 %}
-				{% with s0 = bot['instruction_book']['instructions'][0]['price'] * bot['instruction_book']['instructions'][0]['size'],
-					s1 = bot['instruction_book']['instructions'][1]['price'] * bot['instruction_book']['instructions'][1]['size'] %}
+				{% set cnt, totbuy = [0], [0.0] %}
+				{% set totsell = [0.0] %}
 					<div class="row">
 						<div class="col-sm-3 thick">Current gain:</div>
 						<div class="col-sm-9">
-						{% if (bot['instruction_book']['instructions'][0]['side'] == 'buy') %}
-							{{ ( s1 - s0 ) * (bot['instruction_book']['count'] // 2) }}
-						{% else %}
-							{{ ( s0 - s1 ) * (bot['instruction_book']['count'] // 2) }}
-						{% endif %}
-							{{ bot['instruction_book']['pair'][4:] }}
+				{% for i in bot['instruction_book']['history'] if (i['type'] == 'order') %} 
+					  {% set _ = cnt.append(cnt.pop() + 1) %}
+					  {% if not (loop.last and cnt[0] % 2 == 1 ) %}
+						  {% if i['side'] == 'buy' %}
+							{% set _ = totbuy.append(totbuy.pop() + i['price'] * i['size']) %}
+						  {% else %}
+							{% set _ = totsell.append(totsell.pop() + i['price'] * i['size']) %}
+						  {% endif %}
+					  {% endif %}
+				{% endfor %}
+				{{ totsell[0] - totbuy[0] }}
 					</div>
 				</div>
-				{% endwith %}
 			{% endif %}
 		</div>
 	</div>

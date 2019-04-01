@@ -4,15 +4,15 @@
 	<div class="row">
 		<div class="col-md-8">
 			<a href="{{ url_for('bots_stopall') }}" class="btn btn-danger confirmation" role="button">Stop all bots</a>
-			<a href="{{ url_for('new_simplebot') }}" class="btn btn-success" role="buton" >New Simple Bot</a>
+			<a href="{{ url_for('new_orderbot') }}" class="btn btn-success" role="buton" >New Simple Bot</a>
 			<a href="{{ url_for('new_stop_loss') }}" class="btn btn-success" role="buton" >New Stop Loss Bot</a>
 			<a href="{{ url_for('new_condbot') }}" class="btn btn-success" role="buton" >New Conditionnal Bot</a>
 		</div><div class="col-md-4"></div>
 	</div>
-    {% if newbots %}
+	{% if newbots %}
 		<div class="row">
 			<div class="col-sm-10">
-	    		<h1>New bots</h1>
+				<h1>New bots</h1>
 				<table class="table table-striped container">
 				{% for bot in newbots %}
 					<tr><th scope="row">{{ bot['name'] }}</th><td>{{ bot['type'] }}</td></tr>
@@ -21,10 +21,10 @@
 			</div>
 		</div>
 	{% endif %}
-    {% if bots %}
+	{% if bots %}
 		<div class="row">
 			<div class="col-sm-12">
-	    		<h1> Running Bots</h1>
+				<h1> Running Bots</h1>
 				<table class="table table-striped container bots_table">
 						<tr><th>Name</th><th>envt</th><th>Start date</th><th>Type</th><th>Loop?</th><th>Instr.<br />count</th><th>Current instruction</th><th colspan="2">Actions</th></tr>
 				{% for bot in bots %}
@@ -41,20 +41,24 @@
 						</td>
 						<td>{{ bot['instruction_book']['count'] }}</td>
 						{% with ci = bot['instruction_book']['current_instruction'] %}
-						<td>{{ "{} {} {} @ {}{}/{}".format(ci['side'], ci['size'], ci['pair'][:3], ci['price'], ci['pair'][4:], ci['pair'][:3]) }} </td>
+							{% if ci['type'] == 'order' %}
+							<td>{{ "{} {} {} @ {}{}/{}".format(ci['side'], ci['size'], ci['pair'][:3], ci['price'], ci['pair'][4:], ci['pair'][:3]) }} </td>
+							{% elif ci['type'] == 'conditionnal' %}
+							<td data-toggle="tooltip" title="{{ ci['rules'] |pjsonlogic }}">Conditionnal</td>
+							{% endif %}
 						{% endwith %}
 							<td><a href="{{ url_for("bot_stop", uid=bot['uid']) }}" role="button" class="btn btn-danger btn-sm confirmation">
 								<span class="{{ icons['stop'] }}"></span> Stop
-        						</a>
+								</a>
 							</td>
 							<td><a href="{{ url_for("bot_pause", uid=bot['uid']) }}" role="button" class="btn btn-warning btn-sm confirmation">
 								<span class="{{ icons['pause'] }}"></span> Pause
-        						</a>
+								</a>
 							</td>
 							<td>
 								<a href="{{ url_for("bot_dup", uid=bot['uid']) }}" role="button" class="btn btn-info btn-sm">
 										<span class="{{ icons['dup'] }}"></span> Duplicate
-        						</a>
+								</a>
 							</td>
 					</tr>
 				{% endfor %}
@@ -71,7 +75,7 @@
 						<td class="tpl-bot-inst-detail"></td>
 						<td class="tpl-bot-stop"><a href="" role="button" class="btn btn-danger btn-sm confirmation">
 										<span class="{{ icons['stop'] }}"></span>Stop
-        					</a>
+							</a>
 						</td>
 					</tr>
 					<tr class="d-none"><td>Only for keeping stripes order</td></tr>
@@ -79,10 +83,10 @@
 			</div>
 		</div>
 	{% endif %}
-    {% if histbots %}
+	{% if histbots %}
 		<div class="row">
 			<div class="col-sm-10">
-	    		<h1>Stopped bots</h1>
+				<h1>Stopped bots</h1>
 				<table class="table table-striped container">
 						<tr><th>Name</th><th>Envt</th><th>Start date</th><th>Type</th><th>Status</th><th>Instr. count</th><th colspan="2">Actions</th></tr>
 				{% for bot in histbots %}
@@ -99,17 +103,17 @@
 						{% if bot['status'] in ["dead", "paused"] %}
 							<a href="{{ url_for("bot_continue", uid=bot['uid']) }}" role="button" class="btn btn-warning btn-sm confirmation">
 								<span class="{{ icons['continue'] }}"></span> Continue
-        					</a>
+							</a>
 							{% else %}
 							{# elif bot['status'] in ["ended", "canceled", "order canceled by user", "order refused"] #}
 							<a href="{{ url_for("bot_dup", uid=bot['uid']) }}" role="button" class="btn btn-info btn-sm">
-          						<span class="{{ icons['dup'] }}"></span> Duplicate
-       						</a>
+		  						<span class="{{ icons['dup'] }}"></span> Duplicate
+	   						</a>
 						{% endif %}
 						</td>
 						<td><a href="{{ url_for("redis_del", key="trader:hb:" + bot['uid']) }}" role="button" class="btn btn-danger btn-sm confirmation">
-          					<span class="{{ icons['delete'] }}"></span> Delete
-        					</a>
+		  					<span class="{{ icons['delete'] }}"></span> Delete
+							</a>
 						</td>
 
 					</tr>

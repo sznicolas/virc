@@ -1,6 +1,7 @@
 import time, json, os, glob
+import collections
 
-from flask import Flask, render_template, redirect, flash, url_for, request
+from flask import Flask, render_template, redirect, flash, url_for, request, jsonify, send_from_directory
 from flask_bootstrap import Bootstrap
 from flask_sse import sse
 
@@ -21,10 +22,16 @@ secret_key = os.environ.get('FLASK_SECRET_KEY') or '3a9b9c9e9f432478'
 app.config['SECRET_KEY'] = secret_key
 app.config['REDIS_URL'] = "redis://redis"
 app.config['BOOTSTRAP_SERVE_LOCAL'] = True
+app.config['CUSTOM_STATIC_PATH'] = graph_path 
 app.register_blueprint(sse, url_prefix='/stream')
 
 # send data to the ticker panel
 panel_tickers = []  
+
+# for ext. generated images
+@app.route('/cstat/<path:filename>')
+def custom_static(filename):
+    return send_from_directory(app.config['CUSTOM_STATIC_PATH'], filename)
 
 # --------- flash, streams, ... ---------
 @app.context_processor
@@ -32,8 +39,8 @@ def inject_common_data():
     ''' sends ticker, and icons global var to all templates '''
     panel_tickers = []
     for k in sorted(rds.scan(match="cb:mkt:tick:*", count=100)[1]):
-        pair = k.split(":")[3]
-        panel_tickers.append({'name': k, 'pair': k.split(":")[-1], "price": rds.get(k)})
+        pair = k.split(":")[-1]
+        panel_tickers.append({'name': k, 'pair': pair, "price": rds.get(k)})
     return dict(panel_tickers=panel_tickers, icons=icons)
 
 @app.before_request
@@ -54,7 +61,7 @@ def root():
     for k in  rds.scan_iter(match="cb:mkt:tick:*"):
       pair = k.split(":")[3]
       tickers[pair] = rds.get(k)
-    return render_template("index.html", tickers=tickers)
+    return render_template("index.html", tickers=tickers, graph_path=graph_path)
 
 @app.route("/graphs/<pair>", methods=["GET"])
 def graphs(pair):
@@ -89,7 +96,7 @@ def bots():
     return render_template("bots/index.html", bots=bots, newbots=newbots, histbots=histbots)
 
 @app.route("/bot/<uid>")
-def bot(uid):
+def bot2(uid):
     res = rds.get("trader:rb:" + uid)
     if res is None:
         res = rds.get("trader:hb:" + uid)
@@ -127,11 +134,11 @@ def bot_dup(uid):
         form = OrderBot()
         form.cambista.choices = []
         # TODO: Put pre-fill in Form constructor
-        # TODO: Put this 2 blocks in 2 functions (pair, cambista)
         form.pair.choices = [(p,p) for p in pairs]
-        for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
-            cambista_info = json.loads(rds.get(k))
-            form.cambista.choices.append((k, "{} ({})".format(cambista_info['name'], cambista_info['role'])))
+        form.cambista.choices = get_cambista_choices(rds)
+        if form.validate_on_submit():
+            create_orderbot(form)
+            return redirect(url_for("bots"))
         form.bot_name.data = bot['name']
         form.pair.data = bot['instruction_book']['pair']
         form.instructions_loop.data = bot['instruction_book']['loop']
@@ -145,44 +152,7 @@ def bot_dup(uid):
             form.sell_at.data = bot['instruction_book']["instructions"][1]['price'] 
     else:
         return("Sorry, type {} not implemented yet.".format(bot['type'])) 
-    return render_template("bots/new_simple.html", form=form)
-
-@app.route("/bot_add", methods=["POST"])
-def bot_add():
-    form = OrderBot()
-    # TODO: Put this 2 blocks in 2 functions (pair, cambista)
-    form.pair.choices = [(p,p) for p in pairs]
-    form.cambista.choices = []
-    for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
-        cambista_info = json.loads(rds.get(k))
-        form.cambista.choices.append((k, "{} ({})".format(cambista_info['name'], cambista_info['role'])))
-    if form.validate_on_submit():
-        bot = {}
-        instruction1 = { 
-                "side": "buy", "price": float(form.buy_at.data),
-                "size": float(form.size.data), "type": "order" }
-        instruction2 = { "side": "sell", "price" : float(form.sell_at.data),
-                "size": float(form.size.data), "type": "order"}
-        if (form.begin_sell.data):
-            instructions = [ instruction2, instruction1]
-        else:
-            instructions = [ instruction1, instruction2 ]
-
-        bot = {"type": "orderbot",
-                "name": form.bot_name.data,
-                "cambista_link": form.cambista.data,
-                #"cambista_title": dict(form.cambista.choices).get(form.cambista.data),
-                #"cambista_icon": json.loads(rds.get(form.cambista.data))['cambista_icon'],
-                "instruction_book": {
-                    "loop": form.instructions_loop.data,
-                    "pair": form.pair.data,
-                    "instructions" : instructions
-                }
-              }
-        rds.lpush("trader:build", str(json.dumps(bot)))
-        return redirect(url_for("bots"))
-    else:
-        return render_template("bots/")
+    return render_template("bots/new_orderbot.html", form=form)
 
 @app.route("/bot_continue/<uid>", methods=["GET", "POST"])
 def bot_continue(uid):
@@ -195,24 +165,132 @@ def bot_continue(uid):
     return redirect(request.referrer)
 
 # ------ new bots 
-@app.route("/bot/new_simple", methods=["GET", "POST"])
-def new_simplebot():
+@app.route("/bot/new_orderbot", methods=["GET", "POST"])
+def new_orderbot():
     form = OrderBot()
-    # TODO: Put this 2 blocks in 2 functions (pair, cambista)
     form.pair.choices = [(p,p) for p in pairs]
-    form.cambista.choices = []
-    for k in sorted(rds.scan(match="virc:cambista:*", count=100)[1]):
-        cambista_info = json.loads(rds.get(k))
-        form.cambista.choices.append((k, "{} ({})".format(cambista_info['name'], cambista_info['role'])))
-    return render_template("bots/new_simple.html", form=form)
+    form.cambista.choices = get_cambista_choices(rds)
+    if form.validate_on_submit():
+        create_orderbot(form)
+        return redirect(url_for("bots"))
+    if form.errors:
+        flash(form.errors, "danger")
+    return render_template("bots/new_orderbot.html", form=form)
 
 @app.route("/bot/new_condbot", methods=["GET", "POST"])
 def new_condbot():
     form = CondBot()
-    # TODO: Put this 2 blocks in 2 functions (pair, cambista)
     form.pair.choices = [(p,p) for p in pairs]
+    indicators = get_indicators(rds)
     form.cambista.choices = get_cambista_choices(rds)
-    return render_template("bots/new_condbot.html", form=form)
+
+    choices, subchoices = get_indicator_choices(indicators, form.pair.data, form.cond1_sel1.data)
+    form.cond1_sel1.choices = choices
+    form.subcond1_sel1.choices = subchoices
+    form.cond1_op1.choices = [("==", "=="), (">=", ">="), ("<=", "<=")]
+    choices, subchoices = get_indicator_choices(indicators, form.pair.data, form.cond1_sel2.data)
+    form.cond1_sel2.choices = choices
+    form.subcond1_sel2.choices = subchoices
+    choices, subchoices = get_indicator_choices(indicators, form.pair.data, form.cond2_sel1.data)
+    form.cond2_sel1.choices = choices
+    form.subcond2_sel1.choices = subchoices
+    form.cond2_op1.choices = [("==", "=="), (">=", ">="), ("<=", "<=")]
+    choices, subchoices = get_indicator_choices(indicators, form.pair.data, form.cond2_sel2.data)
+    form.cond2_sel2.choices = choices
+    form.subcond2_sel2.choices = subchoices
+
+    choices, subchoices = get_indicator_choices(indicators, form.pair.data, form.cond3_sel1.data)
+    form.cond3_sel1.choices = choices
+    form.subcond3_sel1.choices = subchoices
+    form.cond3_op1.choices = [("==", "=="), (">=", ">="), ("<=", "<=")]
+    choices, subchoices = get_indicator_choices(indicators, form.pair.data, form.cond3_sel2.data)
+    form.cond3_sel2.choices = choices
+    form.subcond3_sel2.choices = subchoices
+    choices, subchoices = get_indicator_choices(indicators, form.pair.data, form.cond4_sel1.data)
+    form.cond4_sel1.choices = choices
+    form.subcond4_sel1.choices = subchoices
+    form.cond4_op1.choices = [("==", "=="), (">=", ">="), ("<=", "<=")]
+    choices, subchoices = get_indicator_choices(indicators, form.pair.data, form.cond4_sel2.data)
+    form.cond4_sel2.choices = choices
+    form.subcond4_sel2.choices = subchoices
+
+    if form.validate_on_submit():
+        bot = {"type": "condbot",
+                "name": form.bot_name.data,
+                "cambista_link": form.cambista.data}
+        #if (form.cond1_arg2type
+        bot["instruction_book"] = {
+                "loop": form.instructions_loop.data,
+                "pair": form.pair.data,
+                "instructions" : []
+            }
+        jsdata = collections.defaultdict(dict)
+        jsdata[form.cond1_sel1.data][form.subcond1_sel1.data] = None
+        jsdata[form.cond2_sel1.data][form.subcond2_sel1.data] = None
+        if (form.cond1_arg2type.data == 'input'):
+            cond1_data2 = form.cond1_input.data
+        else:
+            jsdata[form.cond1_sel2.data][form.subcond1_sel2.data] = None
+            cond1_data2 ={'var': "{}.{}".format(form.cond1_sel2.data, form.subcond1_sel2.data)}
+        if (form.cond2_arg2type.data == 'input'):
+            cond2_data2 = form.cond2_input.data
+        else:
+            jsdata[form.cond2_sel2.data][form.subcond2_sel2.data] = None
+            cond2_data2 ={'var': "{}.{}".format(form.cond2_sel2.data, form.subcond2_sel2.data)}
+        rules = { "and" : 
+            [ 
+                { form.cond1_op1.data: 
+                    [ {'var': "{}.{}".format(form.cond1_sel1.data, form.subcond1_sel1.data) }
+                    , cond1_data2 ]
+                },
+                { form.cond2_op1.data: 
+                    [ {'var': "{}.{}".format(form.cond2_sel1.data, form.subcond2_sel1.data) }
+                    , cond2_data2 ]
+                }
+            ] 
+            }
+        bot["instruction_book"]['instructions'].append({'type': 'conditionnal', 'data': jsdata, 'rules': rules})
+
+        instruction = { "side": form.side1.data, "price" : "mkt:" + '{0:+f}'.format(form.price1.data),
+                "size": float(form.size1.data), "type": "order_var"}
+        bot["instruction_book"]['instructions'].append(instruction)
+
+        jsdata = collections.defaultdict(dict)
+        jsdata[form.cond3_sel1.data][form.subcond3_sel1.data] = None
+        jsdata[form.cond4_sel1.data][form.subcond4_sel1.data] = None
+        if (form.cond3_arg2type.data == 'input'):
+            cond3_data2 = form.cond3_input.data
+        else:
+            jsdata[form.cond3_sel2.data][form.subcond3_sel2.data] = None
+            cond3_data2 ={'var': "{}.{}".format(form.cond3_sel2.data, form.subcond3_sel2.data)}
+        if (form.cond4_arg2type.data == 'input'):
+            cond4_data2 = form.cond4_input.data
+        else:
+            jsdata[form.cond4_sel2.data][form.subcond4_sel2.data] = None
+            cond4_data2 ={'var': "{}.{}".format(form.cond4_sel2.data, form.subcond4_sel2.data)}
+        rules = { "and" : 
+            [ 
+                { form.cond3_op1.data: 
+                    [ {'var': "{}.{}".format(form.cond3_sel1.data, form.subcond3_sel1.data) }
+                    , cond3_data2 ]
+                },
+                { form.cond4_op1.data: 
+                    [ {'var': "{}.{}".format(form.cond4_sel1.data, form.subcond4_sel1.data) }
+                    , cond4_data2 ]
+                }
+            ] 
+          }
+        bot["instruction_book"]['instructions'].append({'type': 'conditionnal', 'data': jsdata, 'rules': rules})
+
+        instruction = { "side": form.side2.data, "price" : "mkt:" +  '{0:+f}'.format(form.price2.data),
+                "size": float(form.size2.data), "type": "order_var"}
+        bot["instruction_book"]['instructions'].append(instruction)
+        
+        rds.lpush("trader:build", str(json.dumps(bot)))
+        return redirect(url_for("bots"))
+    if form.errors:
+        flash(form.errors, "danger")
+    return render_template("bots/new_condbot.html", form=form, indicators=json.dumps(indicators, sort_keys=True)) 
 
 @app.route("/new_stop_loss", methods=["GET", "POST"])
 def new_stop_loss():
@@ -274,3 +352,42 @@ def redis_del(key):
     utils.flash("deleted '%s'" % key,'danger')
     return redirect(request.referrer) #url_for("redis_ls"))
 
+
+# ------------- functions --------
+def create_orderbot(form):
+    bot = {"type": "orderbot",
+            "name": form.bot_name.data,
+            "cambista_link": form.cambista.data}
+    instruction1 = { 
+            "side": "buy", "price": float(form.buy_at.data),
+            "size": float(form.size.data), "type": "order" }
+    instruction2 = { "side": "sell", "price" : float(form.sell_at.data),
+            "size": float(form.size.data), "type": "order"}
+    if (form.begin_sell.data):
+        instructions = [ instruction2, instruction1]
+    else:
+        instructions = [ instruction1, instruction2 ]
+    bot["instruction_book"] = {
+            "loop": form.instructions_loop.data,
+            "pair": form.pair.data,
+            "instructions" : instructions
+        }
+    rds.lpush("trader:build", str(json.dumps(bot)))
+
+# -- filters
+@app.template_filter('pjsonlogic') 
+def pjsonlogic(d,txt=""):
+  for k,v in d.items():
+    if type(v) is list:
+        if type(v[0]) is dict:
+            txt = pjsonlogic(v[0], txt)
+        else:
+            txt+=v[0]
+        txt += " " + k + " "
+        if type(v[1]) is dict:
+            txt = pjsonlogic(v[1], txt)
+        else:
+            txt+=v[1]
+    else:
+        txt+=v
+  return txt

@@ -2,9 +2,10 @@ FROM ubuntu:latest
 
 RUN apt-get update && \
 	echo $TZ > /etc/timezone     && \
-	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-pip  tzdata vim && \
+	DEBIAN_FRONTEND=noninteractive apt-get -y -qq install --no-install-suggests python-pip python3 python3-pip tzdata vim && \
         apt-get clean all && \
-	pip install --no-cache-dir redis hiredis python-dateutil
+	pip install --no-cache-dir redis hiredis python-dateutil json-logic && \
+	pip3 install --no-cache-dir redis hiredis python-dateutil json-logic-qubit
 
 COPY codedir/trader /code/
 COPY codedir/common /code/

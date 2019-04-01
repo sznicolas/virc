@@ -109,6 +109,18 @@ services:
             - ../logs:/logs
         depends_on:
             - gui
+    poutse:
+        build: 
+          context: .
+          dockerfile: Dockerfile.poutse
+        restart: on-failure
+        env_file:
+            - conf.env
+        networks:
+            - back
+            - front
+        depends_on:
+            - gui
 
 networks:
         front:
