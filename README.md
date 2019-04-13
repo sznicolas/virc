@@ -1,6 +1,6 @@
 # virc
 
-Virc is a tool that gets and calculates data market from the Coinbase Pro's API. It also can command bots that send orders to Coinbase. A simulation mode is available.
+Virc aims to be a trading bot framework.
 
 ## Disclaimer
 This product is in an early development stage. Cambista / Trader will send orders to Coinbase Pro, so you shoud'nt use them now, and later at your own risks.
