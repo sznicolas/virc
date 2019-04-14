@@ -155,6 +155,8 @@ class CondBot(OrderBot):
             self.cancel_order()
 
 class InstructionsBook(object):
+    """ contains active instructions 
+    and archives closed instructions """
     def __init__(self, ibk, uid):
         self.loop  = ibk.get("loop")
         self.index = ibk.get("index", 0)
@@ -216,6 +218,7 @@ class InstructionsBook(object):
             self.current_instruction.set_start_date()
 
 class Instruction(object):
+    """ generic instruction base class """
     def __init__(self, instruction):
         self.uid  = instruction.get('uid')
         self.type = instruction['type']
@@ -258,6 +261,7 @@ class Instruction(object):
         return self.pair
 
 class OrderInstruction(Instruction):
+    """ order instruction. buy or sell at a defined price """
     def __init__(self, instruction):
         super(OrderInstruction, self).__init__(instruction)
         self.size = instruction['size']
@@ -265,13 +269,14 @@ class OrderInstruction(Instruction):
         self.price = instruction['price']
         self.pair = instruction['pair']
         self.wait_filled = instruction.get('wait_filled')
-        self.status = instruction.get('status') # "wait_filled"|"canceled" <= with one 'l' !!! |"filled"|None
+        self.order_id = instruction.get('order_id')
+        self.status = instruction.get('status') # "wait_filled"|"canceled" <= with one 'l' |"filled"|None
 
     def to_dict(self):
         return { "size": self.size,  "side"  : self.side,
                 "price": self.price, "type"  : self.type,
                 "pair" : self.pair,  "status": self.status,
-                "uid"  : self.uid,
+                "uid"  : self.uid,   "order_id": self.order_id,
                 "wait_filled": self.wait_filled,
                 "start_date" : self._idate(self.start_date),
                 "execution_date": self._idate(self.execution_date),
@@ -279,27 +284,33 @@ class OrderInstruction(Instruction):
                 }
 
     def get_order_id(self):
-        return self.wait_filled
+        return self.order_id
 
     def set_order_id(self,order_id):
         self.status = "wait_filled"
         self.wait_filled = order_id
+        self.order_id = order_id
 
     def set_order_filled(self,order_id):
         self.set_execution_date()
         self.status = "filled"
+        self.order_id = order_id
         self.wait_filled = None
 
     def __repr__(self):
         return "OrderInstruction ({})".format(str(self.to_dict()))
 
 class OrderVarInstruction(OrderInstruction):
+    """ variable order instruction.
+    set an order price relative to market price """
     def set_price(self, mktprice):
         _, val = self.price.split("mkt:")
         self.price = float(val) + float(mktprice)
         self.type = "order"
 
 class CondInstruction(Instruction):
+    """ conditionnal instruction.
+    evaluate logic and returns result """
     def __init__(self, instruction):
         super(CondInstruction, self).__init__(instruction)
         self.data  = instruction.get('data')

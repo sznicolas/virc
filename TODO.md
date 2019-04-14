@@ -17,6 +17,8 @@ trader_1       | TypeError: cannot concatenate 'str' and 'NoneType' objects
 ```
 Not sure every case has been taken into account
 
+* manage partial orders
+
 ## Gui
 * dynamically update bots page (in progress)
 * Find solution between sse (pubsub) and flash (in a redis list) to be sure that every message is displayed. 
@@ -29,7 +31,7 @@ Not sure every case has been taken into account
 
 ## Architecture
 * prefix all coinbase-specific containers by cb<container>
-
+* remove old tickers 
 
 ## Functionnalities
 * Group and chain bots. Develelop watchdog bots chained with trading bots.

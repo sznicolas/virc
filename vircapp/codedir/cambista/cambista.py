@@ -70,6 +70,8 @@ class myWebsocketClient(cbpro.WebsocketClient):
             return
         elif msg['type'] == "done":
             print msg
+            recv = cb_get_order(msg['order_id'])
+            msg['fees'] = recv['fill_fees']
             rds.lpush(channels["order_done"] + msg['order_id'], json.dumps(msg))
             logging.info("Order done. Reason: {} order_id: {}".format(msg['reason'], msg['order_id']))
             utils.flash("Order done. Reason: {} order_id: {}".format(msg['reason'], msg['order_id']), "info", sync=False)
