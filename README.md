@@ -40,8 +40,10 @@ virc frontend containers :
 ## Screenshots
 Main page
 ![main page](/doc/images/main.png)
+
 New simple bot
 ![new_simple bot](doc/images/new_simple_bot.png)
+
 Tickers
 ![tickers](doc/images/tickers.png)
 
