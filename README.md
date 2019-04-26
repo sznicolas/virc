@@ -37,4 +37,8 @@ virc frontend containers :
 * Trader spawns in its container the bots. It receives orders from redis lists.
 * a GUI to define bots and monitor.
 
+## Screenshots
+![main page](https://github.com/sznicolas/virc/tree/dev/doc/images/main.png)
+
+
 _made in switzerland [+]_
