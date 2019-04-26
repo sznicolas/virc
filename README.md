@@ -39,6 +39,7 @@ virc frontend containers :
 
 ## Screenshots
 ![main page](https://github.com/sznicolas/virc/tree/dev/doc/images/main.png?raw=true)
+![main page](https://github.com/sznicolas/virc/tree/dev/doc/images/main.png)
 
 
 _made in switzerland [+]_
