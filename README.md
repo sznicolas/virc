@@ -38,7 +38,7 @@ virc frontend containers :
 * a GUI to define bots and monitor.
 
 ## Screenshots
-![main page](https://github.com/sznicolas/virc/tree/dev/doc/images/main.png?raw=trueadd)
+![main page](https://github.com/sznicolas/virc/tree/dev/doc/images/main.png?raw=true)
 
 
 _made in switzerland [+]_
